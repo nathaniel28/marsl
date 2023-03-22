@@ -13,16 +13,21 @@ int closest(uint u) {
 	return -r2 < r1 ? r2 : r1;
 }
 
+void print_cell(Cell *c) {
+	printf(
+		"%s %c%d, %c%d",
+		name_from_op(c->op),
+		char_from_addr_method(AFIELD(c).addr),
+		closest(AFIELD(c).val),
+		char_from_addr_method(BFIELD(c).addr),
+		closest(BFIELD(c).val)
+	);
+}
+
 void print_core() {
 	for (Cell *cur = core; cur < core + CORESIZE; cur++) {
-		printf(
-			"%s %c%d, %c%d\n",
-			name_from_op(cur->op),
-			char_from_addr_method(AFIELD(cur).addr),
-			closest(AFIELD(cur).val),
-			char_from_addr_method(BFIELD(cur).addr),
-			closest(BFIELD(cur).val)
-		);
+		print_cell(cur);
+		printf("\n");
 	}
 }
 
@@ -49,13 +54,34 @@ void step(Program *p) {
 	assert(instruction < CORESIZE);
 	Cell *self = core + instruction;
 
-	state.caller = p;
+	printf("%p: ", p);
+	print_cell(self);
+
 	state.src = resolve_field(self, &AFIELD(self));
 	state.dst = resolve_field(self, &BFIELD(self));
+	state.kill_proc = 0;
+	state.ret_to = self + 1;
 
 	self->op();
 
-	// TODO who manages incrimenting the current process? this function right?
+	if (state.kill_proc) {
+		printf(" [process killed, %u remaining]\n", p->nprocs);
+		// TODO: handle
+		/*
+		state.caller->nprocs--;
+		uint *dst = &state.caller->proc_queue[state.caller->cur_proc];
+		uint *src = dst + 1;
+		memmove(dst, src, sizeof(uint) * (state.caller->proc_queue + state.caller->nprocs - dst));
+		if (state.caller->nprocs == 0) {
+		        // TODO: game over
+		}
+		*/
+	} else {
+		uint *cur_instr_offset = &p->proc_queue[p->cur_proc];
+		*cur_instr_offset = (state.ret_to - core) % CORESIZE;
+		printf(" [next at %u]\n", *cur_instr_offset);
+		p->cur_proc = (p->cur_proc + 1) % p->nprocs;
+	}
 }
 
 char *incr_while(char *s, char c) {
@@ -84,7 +110,8 @@ int set_args(Cell *cell, int field, char **p) {
 	char *num_end = pos;
 	long num = strtol(num_start, &num_end, 10);
 	if (errno == ERANGE) return -1;
-	cell->fields[field].val = num % CORESIZE;
+	cell->fields[field].val = (unsigned long) num % CORESIZE;
+	//printf("%ld -> %u\n", num, cell->fields[field].val);
 	*p = pos;
 	return 0;
 }
@@ -108,10 +135,24 @@ int set(Cell *cell, char *pos) {
 #define S(cell, str) if (set(cell, str)) { printf("bad code '%s'\n", str); exit(-1); }
 
 int main() {
+	static Program p; // for zero init
+	p.proc_queue[0] = 1;
+	p.nprocs = 1;
+	p.cur_proc = 0;
+
 	init_core();
-	S(core + 0, "dat.f $2 $0");
+	S(core + 0, "dat.f #2 #0");
 	S(core + 1, "mov.i {-1 {-1");
-	S(core + CORESIZE - 1, "dat.f $2 $0");
+	S(core + 2, "jmp.a $-2 $0");
 	print_core();
+	printf("\n");
+
+	uint steps = 3;
+	while (steps--) {
+		step(&p);
+		print_core();
+		printf("\n");
+	}
+
 	return 0;
 }

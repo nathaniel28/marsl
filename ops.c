@@ -3,25 +3,11 @@
 #include "ops.h"
 #include "types.h"
 
-static void next_instr(uint delta) {
-	uint *cur_instr_offset = &state.caller->proc_queue[state.caller->cur_proc];
-	*cur_instr_offset = (*cur_instr_offset + delta) % CORESIZE;
-	state.caller->cur_proc = (state.caller->cur_proc + 1) % state.caller->nprocs;
-}
-
-static void kill_proc() {
-	state.caller->nprocs--;
-	uint *dst = &state.caller->proc_queue[state.caller->cur_proc];
-	uint *src = dst + 1;
-	memmove(dst, src, sizeof(uint) * (state.caller->proc_queue + state.caller->nprocs - dst));
-	if (state.caller->nprocs == 0) {
-		// TODO: game over
-	}
-}
-
 #define GEN_FN(name) \
 	static void name##A () { name(0, 0); } \
-	static void name##B () { name(1, 1); } \
+	static void name##B () { name(1, 1); }
+
+#define GEN_FN_REV(name) \
 	static void name##AB() { name(0, 1); } \
 	static void name##BA() { name(1, 0); }
 
@@ -29,63 +15,60 @@ static void kill_proc() {
 	static void name##F () { name(0, 0); name(1, 1); } \
 	static void name##X () { name(0, 1); name(1, 0); }
 
-// temporarily non-static
-static void dat() { kill_proc(); }
+#define GEN_FULL(name) \
+	GEN_FN(name); \
+	GEN_FN_REV(name); \
+	GEN_FN_EXTRA(name);
+
+static void dat() { state.kill_proc = 1; }
 
 static void mov(byte src_field, byte dst_field) {
 	(state.dst->fields + dst_field)->val = (state.src->fields + src_field)->val;
 }
-GEN_FN(mov);
-GEN_FN_EXTRA(mov);
-// temporarily non-static
+GEN_FULL(mov);
 static void movI() { *state.dst = *state.src; }
 
 static void add(byte src_field, byte dst_field) {
 	uint *dst_u = &(state.dst->fields + dst_field)->val;
 	*dst_u = (*dst_u + (state.src->fields + src_field)->val) % CORESIZE;
 }
-GEN_FN(add);
-GEN_FN_EXTRA(add);
+GEN_FULL(add);
 
 static void sub(byte src_field, byte dst_field) {
 	uint *dst_u = &(state.dst->fields + dst_field)->val;
 	*dst_u = (*dst_u - (state.src->fields + src_field)->val) % CORESIZE;
 }
-GEN_FN(sub);
-GEN_FN_EXTRA(sub);
+GEN_FULL(sub);
 
 static void mul(byte src_field, byte dst_field) {
 	uint *dst_u = &(state.dst->fields + dst_field)->val;
 	*dst_u = ((*dst_u) * ((state.src->fields + src_field)->val)) % CORESIZE;
 }
-GEN_FN(mul);
-GEN_FN_EXTRA(mul);
+GEN_FULL(mul);
 
 static void div(byte src_field, byte dst_field) {
 	uint divisor = (state.src->fields + src_field)->val;
 	if (divisor == 0) {
-		kill_proc();
+		state.kill_proc = 1;
 	} else {
 		uint *dst_u = &(state.dst->fields + dst_field)->val;
 		*dst_u = (*dst_u / divisor) % CORESIZE;
 	}
 }
-GEN_FN(div); // should FLAG KILLING THE PROCESS OR TWO PROCESS CAN BE KILLED WITH DIV.F IF BOTH DENOMINATORS ARE ZERO
-GEN_FN_EXTRA(div);
+GEN_FULL(div);
 
 static void mod(byte src_field, byte dst_field) {
 	uint divisor = (state.src->fields + src_field)->val;
 	if (divisor == 0) {
-		kill_proc();
+		state.kill_proc = 1;
 	} else {
 		uint *dst_u = &(state.dst->fields + dst_field)->val;
 		*dst_u = (*dst_u % divisor) % CORESIZE;
 	}
 }
-GEN_FN(mod); // SAME ISSUE AS DIV.F
-GEN_FN_EXTRA(mod);
+GEN_FULL(mod);
 
-static void jmp() { next_instr(AFIELD(state.src).val); }
+static void jmp() { state.ret_to = state.src; }
 
 #define GEN_JUMP(name, condition) \
 	static void name##A() { if (AFIELD(state.dst).val condition) jmp(); } \
@@ -107,14 +90,15 @@ static void djnF() {
 }
 
 #define GEN_SKIP(name, compare) \
-	static void name(byte src_field, byte dst_field) { next_instr(1 + ((state.src->fields + src_field)->val compare (state.dst->fields + dst_field)->val)); } \
+	static void name(byte src_field, byte dst_field) { state.ret_to += ((state.src->fields + src_field)->val compare (state.dst->fields + dst_field)->val); } \
 	GEN_FN(name); \
-	static void name##F() { next_instr(1 + (AFIELD(state.src).val compare AFIELD(state.dst).val && BFIELD(state.src).val compare BFIELD(state.dst).val)); } \
-	static void name##X() { next_instr(1 + (AFIELD(state.src).val compare BFIELD(state.dst).val && BFIELD(state.src).val compare AFIELD(state.dst).val)); }
+	static void name##F() { state.ret_to += (AFIELD(state.src).val compare AFIELD(state.dst).val && BFIELD(state.src).val compare BFIELD(state.dst).val); } \
+	static void name##X() { state.ret_to += (AFIELD(state.src).val compare BFIELD(state.dst).val && BFIELD(state.src).val compare AFIELD(state.dst).val); }
 
 #define GEN_SKIP_FULL(name, compare) \
+	GEN_FN_REV(name); \
 	static void name##I() { \
-		next_instr(1 + \
+		state.ret_to += ( \
 			state.src->op compare state.dst->op && \
 			AFIELD(state.src).addr compare AFIELD(state.dst).addr && \
 			BFIELD(state.src).addr compare BFIELD(state.dst).addr && \
@@ -129,7 +113,6 @@ GEN_SKIP_FULL(seq, ==);
 GEN_SKIP(sne, !=);
 GEN_SKIP_FULL(sne, !=);
 
-// TODO: this generates useless functions sltAB and sltBA
 GEN_SKIP(slt, <);
 
 void spl() {
@@ -164,6 +147,7 @@ static struct {
 	{"nop", {nop , nop , nop  , nop  , nop , nop , nop }},
 };
 
+// name must point to at least 2 chars (16 bytes)
 enum mode mode_from_name(const char *name) {
 	enum mode res;
 	switch (name[0]) {

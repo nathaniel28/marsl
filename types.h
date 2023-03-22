@@ -33,8 +33,9 @@ typedef struct {
 } Program;
 
 typedef struct {
-	Program *caller;
 	Cell *src, *dst;
+	byte kill_proc; // 0 if process should not be killed, 1 otherwise
+	Cell *ret_to; // defaults to 1 cell after the current instruction
 } State;
 
 extern Cell core[CORESIZE]; // defined in types.c
