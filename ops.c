@@ -115,9 +115,7 @@ GEN_SKIP_FULL(sne, !=);
 
 GEN_SKIP(slt, <);
 
-void spl() {
-	// TODO
-}
+void spl() { state.spl_to = state.src; }
 
 void nop() { /* TODO */ }
 

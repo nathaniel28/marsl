@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,83 +5,7 @@
 #include "address.h"
 #include "types.h"
 #include "ops.h"
-
-int closest(uint u) {
-	int r1 = u % CORESIZE;
-	int r2 = r1 - CORESIZE;
-	return -r2 < r1 ? r2 : r1;
-}
-
-void print_cell(Cell *c) {
-	printf(
-		"%s %c%d, %c%d",
-		name_from_op(c->op),
-		char_from_addr_method(AFIELD(c).addr),
-		closest(AFIELD(c).val),
-		char_from_addr_method(BFIELD(c).addr),
-		closest(BFIELD(c).val)
-	);
-}
-
-void print_core() {
-	for (Cell *cur = core; cur < core + CORESIZE; cur++) {
-		print_cell(cur);
-		printf("\n");
-	}
-}
-
-void init_core() {
-	const Cell default_cell = {
-		.fields = {
-			{ default_addr_mode, 0 },
-			{ default_addr_mode, 0 },
-		},
-		.op = default_op,
-	};
-	for (Cell *cur = core; cur < core + CORESIZE; cur++) {
-		*cur = default_cell;
-	}
-}
-
-Cell *resolve_field(Cell *cell, Field *field) {
-	return field->addr(cell, field->val);
-}
-
-void step(Program *p) {
-	assert(p->cur_proc < MAXPROCESSES && p->cur_proc < p->nprocs);
-	uint instruction = p->proc_queue[p->cur_proc];
-	assert(instruction < CORESIZE);
-	Cell *self = core + instruction;
-
-	printf("%p: ", p);
-	print_cell(self);
-
-	state.src = resolve_field(self, &AFIELD(self));
-	state.dst = resolve_field(self, &BFIELD(self));
-	state.kill_proc = 0;
-	state.ret_to = self + 1;
-
-	self->op();
-
-	if (state.kill_proc) {
-		printf(" [process killed, %u remaining]\n", p->nprocs);
-		// TODO: handle
-		/*
-		state.caller->nprocs--;
-		uint *dst = &state.caller->proc_queue[state.caller->cur_proc];
-		uint *src = dst + 1;
-		memmove(dst, src, sizeof(uint) * (state.caller->proc_queue + state.caller->nprocs - dst));
-		if (state.caller->nprocs == 0) {
-		        // TODO: game over
-		}
-		*/
-	} else {
-		uint *cur_instr_offset = &p->proc_queue[p->cur_proc];
-		*cur_instr_offset = (state.ret_to - core) % CORESIZE;
-		printf(" [next at %u]\n", *cur_instr_offset);
-		p->cur_proc = (p->cur_proc + 1) % p->nprocs;
-	}
-}
+#include "sim.h"
 
 char *incr_while(char *s, char c) {
 	while (*s && *s == c) {
@@ -136,18 +59,31 @@ int set(Cell *cell, char *pos) {
 
 int main() {
 	static Program p; // for zero init
-	p.proc_queue[0] = 1;
+	p.proc_queue[0] = 0;
 	p.nprocs = 1;
 	p.cur_proc = 0;
 
 	init_core();
+	//S(core + 0, "mov.i $0 $1");
+	/*
 	S(core + 0, "dat.f #2 #0");
 	S(core + 1, "mov.i {-1 {-1");
 	S(core + 2, "jmp.a $-2 $0");
+	*/
+	/*
+	S(core + 0, "spl.a $2 #0");
+	S(core + 1, "jmp.a $0 $0");
+	S(core + 2, "mov.i $1 $-1");
+	S(core + 3, "jmp.a $1 $0");
+	S(core + 4, "jmp.a $0 $0");
+	*/
+	S(core + 0, "spl.a $1 #0");
+	S(core + 1, "spl.a $1 #0");
+	S(core + 2, "jmp.a $0 #0");
 	print_core();
 	printf("\n");
 
-	uint steps = 3;
+	uint steps = 10;
 	while (steps--) {
 		step(&p);
 		print_core();
