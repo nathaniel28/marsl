@@ -4,11 +4,14 @@ LIBS=
 
 include Makefile.d
 
-OBJS=address.o main.o ops.o sim.o types.o
-
+OBJS=address.o main.o ops.o sim.o types.o parser.tab.o
 corewars: $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(LIBS) -o corewars
 
-SRCS=address.c main.c ops.c sim.c types.c
+parser:
+	bison --warnings=all parser.y
+	$(CC) -c parser.tab.c
+
+SRCS=address.c main.c ops.c sim.c types.c parser.tab.c
 depend Makefile.d:
 	$(CC) -MM $(SRCS) |grep : >Makefile.d

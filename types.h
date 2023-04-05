@@ -1,7 +1,7 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#define CORESIZE 8
+#define CORESIZE 80
 #define MAXPROCS 16
 #define MAXPROGRAMLEN 20
 //#define MINSEPERATION

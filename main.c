@@ -1,6 +1,8 @@
+#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "address.h"
 #include "types.h"
@@ -55,28 +57,105 @@ int set(Cell *cell, char *pos) {
 	return 0;
 }
 
+#define OP(id, mode_id, a_addr, a, b_addr, b) \
+	(Cell) { \
+		.op = op_registry[id].modes[mode_id], \
+		.fields = { \
+			(Field) {.addr = addr_method_from_char(a_addr), .val = a}, \
+			(Field) {.addr = addr_method_from_char(b_addr), .val = b} \
+		} \
+	}
+
+// that's a cast, not a parameter
+#define END (Cell) { .op = NULL }
+
+uint cnt_instrs(Cell *prog) {
+	uint res = 0;
+	while ((prog++)->op) res++;
+	return res;
+}
+
+void test() {
+	// yeah, programs sorta being null terminated is bad, but the array
+	// degrades to a pointer within the struct. Just for testing, so
+	// not too bad?
+	const struct {
+		Cell *input;
+		Cell *answer;
+		uint steps;
+	} tests[] = {
+		{
+			(Cell []) {
+				OP(MOV, M_I, '$', 0, '$', 1),
+				END
+			},
+			(Cell []) {
+				OP(MOV, M_I, '$', 0, '$', 1),
+				OP(MOV, M_I, '$', 0, '$', 1),
+				OP(MOV, M_I, '$', 0, '$', 1),
+				END
+			},
+			3
+		},
+	};
+
+	for (int i = 0; i < sizeof tests/sizeof *tests; i++) {
+		init_core();
+		Program p = {
+			.source_code = tests[i].input,
+			.ninstrs = cnt_instrs(tests[i].input),
+			.nprocs = 1,
+			.cur_proc = 0,
+		};
+		assert(p.ninstrs < MAXPROGRAMLEN);
+		memset(p.proc_queue, 0, sizeof(uint)*(MAXPROCS-1));
+
+		for (uint l = 0; l < p.ninstrs; l++) {
+			*(core + l) = *(tests[i].input + l);
+		}
+
+		uint steps = tests[i].steps;
+		while (steps--) {
+			step(&p);
+		}
+
+		char *result = NULL;
+		Cell *expected = tests[i].answer;
+		for (uint pos = 0; expected[pos].op; pos++) {
+			if (pos >= CORESIZE) {
+				printf("uh oh\n");
+				exit(1);
+			}
+			Cell *a = &expected[pos], *b = &core[pos];
+			if (
+				a->op != b->op ||
+				a->fields[0].addr != b->fields[0].addr ||
+				a->fields[0].val != b->fields[0].val ||
+				a->fields[1].addr != b->fields[1].addr ||
+				a->fields[1].val != b->fields[1].val
+			) {
+				result = "failed";
+				break;
+			}
+		}
+		if (!result) {
+			result = "passed";
+		}
+		
+		printf("%d: len %u, %u steps, %s\n", i, p.ninstrs, tests[i].steps, result); 
+	}
+}
+
 #define S(cell, str) if (set(cell, str)) { printf("bad code '%s'\n", str); exit(-1); }
 
 int main() {
+	/*
 	static Program p; // for zero init
 	p.proc_queue[0] = 0;
 	p.nprocs = 1;
 	p.cur_proc = 0;
 
 	init_core();
-	//S(core + 0, "mov.i $0 $1");
-	/*
-	S(core + 0, "dat.f #2 #0");
-	S(core + 1, "mov.i {-1 {-1");
-	S(core + 2, "jmp.a $-2 $0");
-	*/
-	/*
-	S(core + 0, "spl.a $2 #0");
-	S(core + 1, "jmp.a $0 $0");
-	S(core + 2, "mov.i $1 $-1");
-	S(core + 3, "jmp.a $1 $0");
-	S(core + 4, "jmp.a $0 $0");
-	*/
 	S(core + 0, "spl.a $1 #0");
 	S(core + 1, "spl.a $1 #0");
 	S(core + 2, "jmp.a $0 #0");
@@ -89,6 +168,9 @@ int main() {
 		print_core();
 		printf("\n");
 	}
+	*/
+
+	test();
 
 	return 0;
 }

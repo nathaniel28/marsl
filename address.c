@@ -2,44 +2,44 @@
 
 #include "address.h"
 
-static Cell *addr_immediate(Cell *cell, uint offset) {
+Cell *addr_immediate(Cell *cell, uint offset) {
 	return cell;
 }
 
-static Cell *addr_direct(Cell *cell, uint offset) {
+Cell *addr_direct(Cell *cell, uint offset) {
 	return core + (cell - core + offset) % CORESIZE;
 }
 
-static Cell *addr_a_indirect(Cell *cell, uint offset) {
+Cell *addr_a_indirect(Cell *cell, uint offset) {
 	Cell *target = addr_direct(cell, offset);
 	return addr_direct(target, AFIELD(target).val);
 }
 
-static Cell *addr_b_indirect(Cell *cell, uint offset) {
+Cell *addr_b_indirect(Cell *cell, uint offset) {
 	Cell *target = addr_direct(cell, offset);
 	return addr_direct(target, BFIELD(target).val);
 }
 
-static Cell *addr_a_indirect_predec(Cell *cell, uint offset) {
+Cell *addr_a_indirect_predec(Cell *cell, uint offset) {
 	Cell *target = addr_direct(cell, offset);
 	AFIELD(target).val = (AFIELD(target).val - 1) % CORESIZE;
 	return addr_direct(target, AFIELD(target).val);
 }
 
-static Cell *addr_a_indirect_postinc(Cell *cell, uint offset) {
+Cell *addr_a_indirect_postinc(Cell *cell, uint offset) {
 	Cell *target = addr_direct(cell, offset);
 	Cell *res = addr_direct(target, AFIELD(target).val);
 	AFIELD(target).val = (AFIELD(target).val + 1) % CORESIZE;
 	return res;
 }
 
-static Cell *addr_b_indirect_predec(Cell *cell, uint offset) {
+Cell *addr_b_indirect_predec(Cell *cell, uint offset) {
 	Cell *target = addr_direct(cell, offset);
 	BFIELD(target).val = (BFIELD(target).val - 1) % CORESIZE;
 	return addr_direct(target, BFIELD(target).val);
 }
 
-static Cell *addr_b_indirect_postinc(Cell *cell, uint offset) {
+Cell *addr_b_indirect_postinc(Cell *cell, uint offset) {
 	Cell *target = addr_direct(cell, offset);
 	Cell *res = addr_direct(target, BFIELD(target).val);
 	BFIELD(target).val = (BFIELD(target).val + 1) % CORESIZE;

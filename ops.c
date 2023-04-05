@@ -3,6 +3,9 @@
 #include "ops.h"
 #include "types.h"
 
+// lots of stuff is static to produce warnings if I generate useless
+// functions with these hack-y macros
+
 #define GEN_FN(name) \
 	static void name##A () { name(0, 0); } \
 	static void name##B () { name(1, 1); }
@@ -89,6 +92,7 @@ static void djnF() {
 	if (AFIELD(state.dst).val != 0 || BFIELD(state.dst).val != 0) jmp();
 }
 
+// TODO: please
 #define GEN_SKIP(name, compare) \
 	static void name(byte src_field, byte dst_field) { state.ret_to += ((state.src->fields + src_field)->val compare (state.dst->fields + dst_field)->val); } \
 	GEN_FN(name); \
@@ -115,39 +119,34 @@ GEN_SKIP_FULL(sne, !=);
 
 GEN_SKIP(slt, <);
 
-void spl() { state.spl_to = state.src; }
+static void spl() { state.spl_to = state.src; }
 
-void nop() { /* TODO */ }
+static void nop() { /* TODO */ }
 
 const operation default_op = dat;
 
-enum mode { M_A, M_B, M_AB, M_BA, M_F, M_X, M_I, M_NB, M_INVALID };
-
-static struct {
-	const char name[3];
-	operation modes[M_NB];
-} registry[] = {
-	{"mov", {movA, movB, movAB, movBA, movF, movX, movI}},
-	{"dat", {dat , dat , dat  , dat  , dat , dat , dat }},
-	{"add", {addA, addB, addAB, addBA, addF, addX, addF}},
-	{"sub", {subA, subB, subAB, subBA, subF, subX, subF}},
-	{"mul", {mulA, mulB, mulAB, mulBA, mulF, mulX, mulF}},
-	{"div", {divA, divB, divAB, divBA, divF, divX, divF}},
-	{"mod", {modA, modB, modAB, modBA, modF, modX, modF}},
-	{"jmp", {jmp , jmp , jmp  , jmp  , jmp , jmp , jmp }},
-	{"jmz", {jmzA, jmzB, jmzB , jmzA , jmzF, jmzF, jmzF}},
-	{"jmn", {jmnA, jmnB, jmnB , jmnA , jmnF, jmnF, jmnF}},
-	{"djn", {djnA, djnB, djnB , djnA , djnF, djnF, djnF}},
-	{"seq", {seqA, seqB, seqAB, seqBA, seqF, seqX, seqI}},
-	{"sne", {sneA, sneB, sneAB, sneBA, sneF, sneX, sneI}},
-	{"slt", {sltA, sltB, sltB , sltA , sltF, sltX, sltF}},
-	{"spl", {spl , spl , spl  , spl  , spl , spl , spl }},
-	{"nop", {nop , nop , nop  , nop  , nop , nop , nop }},
+const named_op op_registry[OP_NB] = {
+	{"mov", {movA, movB, movAB, movBA, movF, movX, movI}, movI },
+	{"dat", {dat , dat , dat  , dat  , dat , dat , dat }, dat  },
+	{"add", {addA, addB, addAB, addBA, addF, addX, addF}, addAB},
+	{"sub", {subA, subB, subAB, subBA, subF, subX, subF}, subAB},
+	{"mul", {mulA, mulB, mulAB, mulBA, mulF, mulX, mulF}, mulAB},
+	{"div", {divA, divB, divAB, divBA, divF, divX, divF}, divAB},
+	{"mod", {modA, modB, modAB, modBA, modF, modX, modF}, modAB},
+	{"jmp", {jmp , jmp , jmp  , jmp  , jmp , jmp , jmp }, jmp  },
+	{"jmz", {jmzA, jmzB, jmzB , jmzA , jmzF, jmzF, jmzF}, jmzB },
+	{"jmn", {jmnA, jmnB, jmnB , jmnA , jmnF, jmnF, jmnF}, jmnB },
+	{"djn", {djnA, djnB, djnB , djnA , djnF, djnF, djnF}, djnB },
+	{"seq", {seqA, seqB, seqAB, seqBA, seqF, seqX, seqI}, seqI },
+	{"sne", {sneA, sneB, sneAB, sneBA, sneF, sneX, sneI}, sneI },
+	{"slt", {sltA, sltB, sltB , sltA , sltF, sltX, sltF}, sltB },
+	{"spl", {spl , spl , spl  , spl  , spl , spl , spl }, spl  },
+	{"nop", {nop , nop , nop  , nop  , nop , nop , nop }, nop  },
 };
 
 // name must point to at least 2 chars (16 bytes)
-enum mode mode_from_name(const char *name) {
-	enum mode res;
+enum mode_id mode_from_name(const char *name) {
+	enum mode_id res;
 	switch (name[0]) {
 	case 'a':
 		if (name[1] == 'b') return M_AB;
@@ -178,13 +177,13 @@ enum mode mode_from_name(const char *name) {
 // name must be a pointer to 3 characters.
 // mode_name must be a pointer to 2 characters.
 operation op_from_name(const char *name, const char *mode_name) {
-	for (int i = 0; i < sizeof(registry)/sizeof(registry[0]); i++) {
-		if (memcmp(name, registry[i].name, 3)) {
+	for (int i = 0; i < OP_NB; i++) {
+		if (memcmp(name, op_registry[i].name, 3)) {
 			continue;
 		}
-		enum mode m = mode_from_name(mode_name);
+		enum mode_id m = mode_from_name(mode_name);
 		if (m != M_INVALID) {
-			return registry[i].modes[m];
+			return op_registry[i].modes[m];
 		}
 		return NULL;
 	}
@@ -200,12 +199,12 @@ const char *name_from_op(operation op) {
 	// 5 stores the second character of the operation node or ' '
 	// 6 stores a '\0'
 	
-	for (int i = 0; i < sizeof(registry)/sizeof(registry[0]); i++) {
+	for (int i = 0; i < OP_NB; i++) {
 		for (int j = 0; j < M_NB; j++) {
-			if (op != registry[i].modes[j]) {
+			if (op != op_registry[i].modes[j]) {
 				continue;
 			}
-			memcpy(&res[0], registry[i].name, 3);
+			memcpy(&res[0], op_registry[i].name, 3);
 			res[3] = '.';
 			switch (j) {
 			case M_A:
