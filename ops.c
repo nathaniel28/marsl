@@ -168,7 +168,7 @@ enum mode_id mode_from_name(const char *name) {
 	default:
 		return M_INVALID;
 	}
-	if (name[1] == ' ') {
+	if (name[1] == '\0') {
 		return res;
 	}
 	return M_INVALID;

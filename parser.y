@@ -59,6 +59,8 @@ void set_field(address_mode v) {
 	pstate.active_field++;
 }
 
+int yydebug = 1; // I'm debugging now
+
 int yylex();
 void yyerror(char const *);
 %}
@@ -97,7 +99,6 @@ operation: prefix { pstate.current->resolved_op = op_registry[pstate.current->op
 		YYABORT;
 	}
 	pstate.current->resolved_op = op_registry[pstate.current->op].modes[m];
-	/* TODO: set the op! */
 }
 	 ;
 
@@ -125,15 +126,18 @@ int yylex() {
 		do {
 			c = fgetc(pstate.file);
 		} while (c != '\n');
+printf("comment\n");
 		return c; // c is always '\n' here
 	}
 
 	// Process numbers.
 	if (isdigit(c)) {
-		ungetc(c, stdin);
-		if (scanf("%u", &yylval.NUM) != 1) {
+		ungetc(c, pstate.file);
+		if (fscanf(pstate.file, "%u", &yylval.NUM) != 1) {
+			fprintf(stderr, "fscanf failed to match unsigned\n");
 			abort();
 		}
+printf("number\n");
 		return NUM;
 	}
 
@@ -146,23 +150,24 @@ int yylex() {
 				len = 2 * len + 8;
 				char *realloced = realloc(buf, len);
 				if (!realloced) {
-					// oh no
-					fprintf(stderr, "oh no\n");
-					exit(-1);
+					fprintf(stderr, "failed to resize string buffer, out of memory\n");
+					free(buf);
+					abort();
 				}
 				buf = realloced;
 			}
-			buf[pos] = c;
+			buf[pos] = tolower(c);
 			pos++;
 			c = fgetc(pstate.file);
 		} while (isalnum(c) || c == '_');
 
-		ungetc(c, stdin);
+		ungetc(c, pstate.file);
 		buf[pos] = '\0';
-		if (pos == 4) { // names of ops are 3 chars long (so pos would be 4)
+		if (pos == 3) { // names of ops are 3 chars long
 			for (unsigned i = 0; i < OP_NB; i++) {
 				// again, names of ops are 3 chars long. TODO: remove magic numbers
 				if (!memcmp(buf, op_registry[i].name, 3)) {
+printf("operation %s\n", buf);
 					free(buf);
 					yylval.OP = i;
 					return OP;
@@ -170,18 +175,22 @@ int yylex() {
 			}
 		}
 
+printf("string \"%s\"\n", buf);
 		// TODO: buf currently leaks memory in this case
+		// actually it shouldn't any more, but double check!
 		yylval.STR = buf;
 		return STR;
 	}
 
 	if (c == EOF) {
 		// Return end-of-input.
+printf("EOF\n");
 		return YYEOF;
 	}
 
+printf("char '%c'\n", c);
 	// Return a single char.
-	return tolower(c);
+	return c;
 }
 
 // Called by yyparse on error.
@@ -211,6 +220,7 @@ int parse(FILE *fp, Cell *buf) {
 
 	line *l;
 	if (!res) {
+printf("writing to core\n");
 		// the following is worst-case order n^2 because of how labels are
 		// resolved. This is bad; n log n could be achieved if labels were
 		// kept in a sorted array. But is it worth the trouble?

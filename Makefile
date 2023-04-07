@@ -9,7 +9,7 @@ corewars: $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(LIBS) -o corewars
 
 parser:
-	bison --warnings=all parser.y
+	bison -t --warnings=all parser.y
 	$(CC) -c parser.tab.c
 
 SRCS=address.c main.c ops.c sim.c types.c parser.tab.c
