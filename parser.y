@@ -38,18 +38,6 @@ void init_pstate(FILE *fp) {
 	pstate.file = fp;
 }
 
-void next_cell() {
-	if (pstate.current - pstate.current >= MAXPROGRAMLEN) {
-		// TODO, WARNING: since next cell is triggered at the end
-		// of EVERY VALID LINE, this if will evaluate true BEFORE
-		// IT SHOULD!!!!!!!!!!!!!!
-		printf("TODO: turn this into an error. anyway the program is more than MAXPROGRAMLEN instructions long\n");
-		exit(-1);
-	}
-	pstate.current++;
-	pstate.active_field = &pstate.current->fields[0];
-}
-
 void set_field(address_mode v) {
 	if (pstate.active_field >= &pstate.current->fields[2]) {
 		printf("TODO: turn this into an error instead of a program termination. anyway, more fields found than needed\n");
@@ -59,7 +47,7 @@ void set_field(address_mode v) {
 	pstate.active_field++;
 }
 
-int yydebug = 1; // I'm debugging now
+int yydebug = 0; // I'm not debugging now
 
 int yylex();
 void yyerror(char const *);
@@ -70,10 +58,24 @@ void yyerror(char const *);
 %token <char *> STR
 %token <enum op_id> OP
 
-%% /* Grammar rules and actions follow. */
+%%
 
+// I'm not really sure how to indent for this section
+
+
+// TODO: lines are giving me trouble. After one is parsed, it remains on the stack and messes up the parsing of the next line! how do I remove it? I could give a prefix the ability to consume a line, I guess...
 line: '\n'
-    | operation field field '\n' { next_cell(); }
+    | operation field field '\n' {
+	if (pstate.current - pstate.current >= MAXPROGRAMLEN) {
+		// TODO, WARNING: since next cell is triggered at the end
+		// of EVERY VALID LINE, this if will evaluate true BEFORE
+		// IT SHOULD!!!!!!!!!!!!!!
+		fprintf(stderr, "program is too long (max length: %u instructions)\n", MAXPROGRAMLEN);
+		YYABORT;
+	}
+	pstate.current++;
+	pstate.active_field = &pstate.current->fields[0];
+}
     ;
 
 // using functions defined in address.h
@@ -96,6 +98,7 @@ operation: prefix { pstate.current->resolved_op = op_registry[pstate.current->op
 	 | prefix '.' STR {
 	enum mode_id m = mode_from_name($3);
 	if (m == M_INVALID) {
+		fprintf(stderr, "invalid addressing mode \"%s\"\n", $3);
 		YYABORT;
 	}
 	pstate.current->resolved_op = op_registry[pstate.current->op].modes[m];
@@ -103,8 +106,12 @@ operation: prefix { pstate.current->resolved_op = op_registry[pstate.current->op
 	 ;
 
 // <op> or <label> <op>
+// note: line is a valid preceeding token because I can't figure out how to
+// pop a line from the stack after it gets parsed...
 prefix: OP { pstate.current->label = NULL; pstate.current->op = $1; }
       | STR OP { pstate.current->label = $1; pstate.current->op = $2; }
+      | line OP { pstate.current->label = NULL; pstate.current->op = $2; }
+      | line STR OP { pstate.current->label = $2; pstate.current->op = $3; }
       ;
 
 %%
@@ -131,13 +138,23 @@ printf("comment\n");
 	}
 
 	// Process numbers.
-	if (isdigit(c)) {
+	if (isdigit(c) || c == '-') {
 		ungetc(c, pstate.file);
-		if (fscanf(pstate.file, "%u", &yylval.NUM) != 1) {
-			fprintf(stderr, "fscanf failed to match unsigned\n");
+		long n;
+		if (fscanf(pstate.file, "%lu", &n) != 1) {
+			fprintf(stderr, "fscanf failed to match long integer\n");
 			abort();
 		}
-printf("number\n");
+		// in C, -1 % 5 (both signed) == -1, NOT 4, as % is the
+		// remainder operator, not a modulo operator. Thus, a slight
+		// workaround is neccesary to make sure the result is the
+		// correct positive version.
+		n = n % CORESIZE;
+		if (n < 0) {
+			n += CORESIZE;
+		}
+		yylval.NUM = n;
+printf("number %ld (%u)\n", n, yylval.NUM);
 		return NUM;
 	}
 
@@ -165,7 +182,7 @@ printf("number\n");
 		buf[pos] = '\0';
 		if (pos == 3) { // names of ops are 3 chars long
 			for (unsigned i = 0; i < OP_NB; i++) {
-				// again, names of ops are 3 chars long. TODO: remove magic numbers
+				// again, names of ops are 3 chars long
 				if (!memcmp(buf, op_registry[i].name, 3)) {
 printf("operation %s\n", buf);
 					free(buf);
@@ -176,8 +193,6 @@ printf("operation %s\n", buf);
 		}
 
 printf("string \"%s\"\n", buf);
-		// TODO: buf currently leaks memory in this case
-		// actually it shouldn't any more, but double check!
 		yylval.STR = buf;
 		return STR;
 	}
