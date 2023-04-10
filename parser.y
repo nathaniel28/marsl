@@ -62,19 +62,18 @@ void yyerror(char const *);
 
 // I'm not really sure how to indent for this section
 
-
-// TODO: lines are giving me trouble. After one is parsed, it remains on the stack and messes up the parsing of the next line! how do I remove it? I could give a prefix the ability to consume a line, I guess...
 line: '\n'
     | operation field field '\n' {
-	if (pstate.current - pstate.current >= MAXPROGRAMLEN) {
-		// TODO, WARNING: since next cell is triggered at the end
-		// of EVERY VALID LINE, this if will evaluate true BEFORE
-		// IT SHOULD!!!!!!!!!!!!!!
+	if (pstate.current - pstate.lines >= MAXPROGRAMLEN) {
+		// TODO: I'm a bit worried about this section. Is it
+		// off-by-one? Is pstate.current the next active element
+		// (as it should (and better) be) or the final finished
+		// element? I'll need to test that.
 		fprintf(stderr, "program is too long (max length: %u instructions)\n", MAXPROGRAMLEN);
 		YYABORT;
 	}
-	pstate.current++;
 	pstate.active_field = &pstate.current->fields[0];
+	pstate.current++;
 }
     ;
 
