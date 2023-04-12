@@ -219,11 +219,15 @@ int resolve_label(line *here, pfield *f) {
 	if (f->label) {
 		line *l = &pstate.lines[0];
 		while (l < pstate.current) {
-			if (!strcmp(f->label, l->label)) {
-				unsigned dist = (unsigned) (((here - l))); // needs more parenthesis
-				f->val = dist % CORESIZE; // is this right?
+			if (l->label && !strcmp(f->label, l->label)) {
+				int offset = (l - here) % CORESIZE;
+				if (offset < 0) {
+					offset += CORESIZE;
+				}
+				f->val = offset; // is this right?
 				return 1;
 			}
+			l++;
 		}
 		return 0;
 	}
