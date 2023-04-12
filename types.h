@@ -33,7 +33,7 @@ typedef struct Cell {
 #define BFIELD(cell) (cell->fields[1])
 
 typedef struct Program {
-	Cell *source_code;
+	Cell source_code[MAXPROGRAMLEN];
 	uint ninstrs;
 	uint proc_queue[MAXPROCS];
 	uint nprocs;

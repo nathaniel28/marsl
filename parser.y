@@ -11,7 +11,7 @@
 typedef struct {
 	address_mode addr;
 	char *label;
-	unsigned val;
+	uint val;
 } pfield;
 
 typedef struct {
@@ -47,14 +47,14 @@ void set_field(address_mode v) {
 	pstate.active_field++;
 }
 
-int yydebug = 1; // I'm debugging now
+int yydebug = 0; // I'm not debugging now
 
 int yylex();
 void yyerror(char const *);
 %}
 
 %define api.value.type union
-%token <unsigned> NUM
+%token <uint> NUM
 %token <char *> STR
 %token <enum op_id> OP
 
@@ -64,7 +64,7 @@ void yyerror(char const *);
 
 line: '\n'
     | line '\n'
-    | operation field field '\n' {
+    | operation field ',' field '\n' {
 	if (pstate.current - pstate.lines >= MAXPROGRAMLEN) {
 		// TODO: I'm a bit worried about this section. Is it
 		// off-by-one? Is pstate.current the next active element
@@ -182,7 +182,7 @@ int yylex() {
 		ungetc(c, pstate.file);
 		buf[pos] = '\0';
 		if (pos == 3) { // names of ops are 3 chars long
-			for (unsigned i = 0; i < OP_NB; i++) {
+			for (uint i = 0; i < OP_NB; i++) {
 				// again, names of ops are 3 chars long
 				if (!memcmp(buf, op_registry[i].name, 3)) {
 //printf("operation %s\n", buf);
@@ -234,7 +234,7 @@ int resolve_label(line *here, pfield *f) {
 	return 1;
 }
 
-int parse(FILE *fp, Cell *buf) {
+int parse(FILE *fp, Cell *buf, uint *len) {
 	init_pstate(fp);
 	int err = yyparse();
 
@@ -261,6 +261,7 @@ int parse(FILE *fp, Cell *buf) {
 			buf++;
 			l++;
 		}
+		*len = l - pstate.lines;
 	}
 
 	l = &pstate.lines[0];

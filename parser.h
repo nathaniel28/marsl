@@ -3,6 +3,8 @@
 
 #include <stdio.h>
 
-extern int parse(FILE *fp, Cell *buf);
+#include "types.h"
+
+extern int parse(FILE *fp, Cell *buf, uint *len);
 
 #endif
