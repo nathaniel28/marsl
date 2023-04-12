@@ -48,6 +48,11 @@ static Cell *resolve_field(Cell *cell, Field *field) {
 	return field->addr(cell, field->val);
 }
 
+// Crazy idea: instead of calling the functions at Cell->fields[*].addr and
+// Cell->op, jump to them. No need to create a new stack frame, and they have
+// no local variables and I've never done anything like that before and it
+// probably won't work for some technical reason I'm unaware of, but maybe it
+// can be done with some inline assembly. TODO, perhaps.
 void step(Program *p) {
 	// TODO: buffer source, destination, and self cells
 	assert(p->cur_proc < MAXPROCS && p->cur_proc < p->nprocs);

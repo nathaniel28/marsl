@@ -47,7 +47,7 @@ void set_field(address_mode v) {
 	pstate.active_field++;
 }
 
-int yydebug = 0; // I'm not debugging now
+int yydebug = 1; // I'm debugging now
 
 int yylex();
 void yyerror(char const *);
@@ -63,6 +63,7 @@ void yyerror(char const *);
 // I'm not really sure how to indent for this section
 
 line: '\n'
+    | line '\n'
     | operation field field '\n' {
 	if (pstate.current - pstate.lines >= MAXPROGRAMLEN) {
 		// TODO: I'm a bit worried about this section. Is it
@@ -72,8 +73,8 @@ line: '\n'
 		fprintf(stderr, "program is too long (max length: %u instructions)\n", MAXPROGRAMLEN);
 		YYABORT;
 	}
-	pstate.active_field = &pstate.current->fields[0];
 	pstate.current++;
+	pstate.active_field = &pstate.current->fields[0];
 }
     ;
 
@@ -96,8 +97,9 @@ location: NUM { pstate.active_field->label = NULL; pstate.active_field->val = $1
 operation: prefix { pstate.current->resolved_op = op_registry[pstate.current->op].default_mode; }
 	 | prefix '.' STR {
 	enum mode_id m = mode_from_name($3);
+	free($3);
 	if (m == M_INVALID) {
-		fprintf(stderr, "invalid addressing mode \"%s\"\n", $3);
+		fprintf(stderr, "invalid addressing mode\n");
 		YYABORT;
 	}
 	pstate.current->resolved_op = op_registry[pstate.current->op].modes[m];
@@ -132,7 +134,7 @@ int yylex() {
 		do {
 			c = fgetc(pstate.file);
 		} while (c != '\n');
-printf("comment\n");
+//printf("comment\n");
 		return c; // c is always '\n' here
 	}
 
@@ -153,7 +155,7 @@ printf("comment\n");
 			n += CORESIZE;
 		}
 		yylval.NUM = n;
-printf("number %ld (%u)\n", n, yylval.NUM);
+//printf("number %ld (%u)\n", n, yylval.NUM);
 		return NUM;
 	}
 
@@ -183,7 +185,7 @@ printf("number %ld (%u)\n", n, yylval.NUM);
 			for (unsigned i = 0; i < OP_NB; i++) {
 				// again, names of ops are 3 chars long
 				if (!memcmp(buf, op_registry[i].name, 3)) {
-printf("operation %s\n", buf);
+//printf("operation %s\n", buf);
 					free(buf);
 					yylval.OP = i;
 					return OP;
@@ -191,18 +193,18 @@ printf("operation %s\n", buf);
 			}
 		}
 
-printf("string \"%s\"\n", buf);
+//printf("string \"%s\"\n", buf);
 		yylval.STR = buf;
 		return STR;
 	}
 
 	if (c == EOF) {
 		// Return end-of-input.
-printf("EOF\n");
+//printf("EOF\n");
 		return YYEOF;
 	}
 
-printf("char '%c'\n", c);
+//printf("char '%c'\n", c);
 	// Return a single char.
 	return c;
 }
@@ -230,18 +232,19 @@ int resolve_label(line *here, pfield *f) {
 
 int parse(FILE *fp, Cell *buf) {
 	init_pstate(fp);
-	int res = yyparse();
+	int err = yyparse();
 
 	line *l;
-	if (!res) {
-printf("writing to core\n");
-		// the following is worst-case order n^2 because of how labels are
-		// resolved. This is bad; n log n could be achieved if labels were
-		// kept in a sorted array. But is it worth the trouble?
+
+	if (!err) {
+		// the following is worst-case order n^2 because of how labels
+		// are resolved. This may be bad; n log n could be achieved if
+		// labels were kept in a sorted array. But is it worth the
+		// trouble?
 		l = &pstate.lines[0];
 		while (l < pstate.current) {
 			if (!resolve_label(l, &l->fields[0]) || !resolve_label(l, &l->fields[1])) {
-				res = -1;
+				err = -1;
 				break;
 			}
 
@@ -264,5 +267,5 @@ printf("writing to core\n");
 		l++;
 	}
 
-	return res;
+	return err;
 }
