@@ -224,7 +224,7 @@ int resolve_label(line *here, pfield *f) {
 				if (offset < 0) {
 					offset += CORESIZE;
 				}
-				f->val = offset; // is this right?
+				f->val = offset;
 				return 1;
 			}
 			l++;
@@ -266,8 +266,8 @@ int parse(FILE *fp, Cell *buf) {
 	l = &pstate.lines[0];
 	while (l < pstate.current) {
 		free(l->label); // something or NULL, so OK to free
-		free(l->fields[0].label);
-		free(l->fields[1].label);
+		free(l->fields[0].label); // likewise
+		free(l->fields[1].label); // likewise
 		l++;
 	}
 

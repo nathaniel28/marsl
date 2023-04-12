@@ -70,6 +70,7 @@ int main() {
 	}
 
 	int res = parse(src, core);
+	fclose(src);
 	print_core();
 	printf("%d\n", res);
 
