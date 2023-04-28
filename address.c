@@ -1,6 +1,7 @@
 #include <stddef.h>
 
 #include "address.h"
+#include "types.h"
 
 Cell *addr_immediate(Cell *cell, uint offset) {
 	return cell;

@@ -144,7 +144,7 @@ const named_op op_registry[OP_NB] = {
 	{"nop", {nop , nop , nop  , nop  , nop , nop , nop }, nop  },
 };
 
-// name must point to at least 2 chars (16 bytes)
+// name must point to at least 2 chars (16 bits)
 enum mode_id mode_from_name(const char *name) {
 	enum mode_id res;
 	switch (name[0]) {

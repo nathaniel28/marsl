@@ -15,3 +15,9 @@ parser:
 SRCS=address.c main.c ops.c sim.c types.c parser.tab.c
 depend Makefile.d:
 	$(CC) -MM $(SRCS) |grep : >Makefile.d
+
+clean:
+	rm *.o
+	make depend
+	make parser
+	make corewars

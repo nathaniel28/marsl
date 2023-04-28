@@ -23,8 +23,7 @@ typedef struct {
 } line;
 
 // parse state, sorta using this like a namespace thing, container for globals
-// immaculate, flawless, sparklingly clean practice right here
-struct {
+static struct {
 	line lines[MAXPROGRAMLEN];
 	line *current;
 	pfield *active_field;
@@ -47,7 +46,7 @@ void set_field(address_mode v) {
 	pstate.active_field++;
 }
 
-int yydebug = 0; // I'm not debugging now
+int yydebug = 1; // I'm not debugging now
 
 int yylex();
 void yyerror(char const *);
