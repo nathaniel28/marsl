@@ -37,16 +37,17 @@ void init_pstate(FILE *fp) {
 	pstate.file = fp;
 }
 
-void set_field(address_mode v) {
-	if (pstate.active_field >= &pstate.current->fields[2]) {
-		printf("TODO: turn this into an error instead of a program termination. anyway, more fields found than needed\n");
-		exit(-1);
-	}
-	pstate.active_field->addr = v;
-	pstate.active_field++;
-}
+#define SET_FIELD(v) do { \
+		if (pstate.active_field >= &pstate.current->fields[2]) { \
+			fprintf(stderr, "instruction has too many fields\n"); \
+			YYABORT; \
+		} \
+		pstate.active_field->addr = v; \
+		pstate.active_field++; \
+	} while (0);
 
-int yydebug = 1; // I'm not debugging now
+
+//int yydebug = 1;
 
 int yylex();
 void yyerror(char const *);
@@ -78,14 +79,14 @@ line: '\n'
     ;
 
 // using functions defined in address.h
-field: '#' location { set_field(addr_immediate); }
-     | '$' location { set_field(addr_direct); }
-     | '*' location { set_field(addr_a_indirect); }
-     | '@' location { set_field(addr_b_indirect); }
-     | '}' location { set_field(addr_a_indirect_postinc); }
-     | '{' location { set_field(addr_a_indirect_predec); }
-     | '>' location { set_field(addr_b_indirect_postinc); }
-     | '<' location { set_field(addr_b_indirect_predec); }
+field: '#' location { SET_FIELD(addr_immediate); }
+     | '$' location { SET_FIELD(addr_direct); }
+     | '*' location { SET_FIELD(addr_a_indirect); }
+     | '@' location { SET_FIELD(addr_b_indirect); }
+     | '}' location { SET_FIELD(addr_a_indirect_postinc); }
+     | '{' location { SET_FIELD(addr_a_indirect_predec); }
+     | '>' location { SET_FIELD(addr_b_indirect_postinc); }
+     | '<' location { SET_FIELD(addr_b_indirect_predec); }
      ;
 
 location: NUM { pstate.active_field->label = NULL; pstate.active_field->val = $1; }
@@ -240,10 +241,6 @@ int parse(FILE *fp, Cell *buf, uint *len) {
 	line *l;
 
 	if (!err) {
-		// the following is worst-case order n^2 because of how labels
-		// are resolved. This may be bad; n log n could be achieved if
-		// labels were kept in a sorted array. But is it worth the
-		// trouble?
 		l = &pstate.lines[0];
 		while (l < pstate.current) {
 			if (!resolve_label(l, &l->fields[0]) || !resolve_label(l, &l->fields[1])) {
