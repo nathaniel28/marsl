@@ -1,19 +1,19 @@
 
-CFLAGS=-g -Wall
+CFLAGS=-g -Wall -Wextra #-O3
 LIBS=
 
 include Makefile.d
 
-OBJS=address.o ops.o sim.o testing.o types.o parser.tab.o
+OBJS=address.o ops.o sim.o types.o parser.tab.o
 corewars: $(OBJS) main.o
-	$(CC) $(CFLAGS) $(OBJS) $(LIBS) -o corewars
+	$(CC) $(CFLAGS) $(OBJS) main.o $(LIBS) -o corewars
 
 parser:
 	bison -t --warnings=all parser.y
 	$(CC) $(CFLAGS) -c parser.tab.c
 
 test: $(OBJS) testing.o
-	$(CC) $(CFLAGS) $(OBJS) $(LIBS) -o test
+	$(CC) $(CFLAGS) $(OBJS) testing.o $(LIBS) -o test
 
 SRCS=address.c main.c ops.c sim.c testing.c types.c parser.tab.c
 depend Makefile.d:
