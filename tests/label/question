@@ -1,0 +1,5 @@
+a mov.i $a, $a
+b mov.f $c, $a
+c mov.f $a, $_long_label
+mov.i $_long_label, $c
+_long_label dat $0, $0

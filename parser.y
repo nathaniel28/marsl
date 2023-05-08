@@ -65,15 +65,10 @@ void yyerror(char const *);
 line: '\n'
     | line '\n'
     | operation field ',' field '\n' {
-	if (pstate.current - pstate.lines >= MAXPROGRAMLEN) {
-		// TODO: I'm a bit worried about this section. Is it
-		// off-by-one? Is pstate.current the next active element
-		// (as it should (and better) be) or the final finished
-		// element? I'll need to test that.
+	if (++pstate.current >= pstate.lines + MAXPROGRAMLEN) {
 		fprintf(stderr, "program is too long (max length: %u instructions)\n", MAXPROGRAMLEN);
 		YYABORT;
 	}
-	pstate.current++;
 	pstate.active_field = &pstate.current->fields[0];
 }
     ;

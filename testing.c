@@ -104,12 +104,24 @@ int test_using(FILE *question, FILE *answer, FILE *params) {
 		step(&q);
 	}
 
-	for (int i = 0; i < ans_len; i++) {
+	for (uint i = 0; i < ans_len; i++) {
 		if (
 			core[i].op != ans[i].op
 			|| !CMP_FIELDS(core[i].fields[0], ans[i].fields[0])
 			|| !CMP_FIELDS(core[i].fields[1], ans[i].fields[1])
 		) {
+			fprintf(stderr, "discrepancy in cell %u:\n", i);
+			// reason for mixing stdout and stderr: print_cell
+			// prints to stdout, but perror (possibly called by
+			// run_tests) prints to stderr. It sucks, but to
+			// make sure things print in the right order, just
+			// call fflush(stdout) after.
+			fprintf(stdout, "expected ");
+			print_cell(&ans[i]);
+			fprintf(stdout, "\n   found ");
+			print_cell(&core[i]);
+			fprintf(stdout, "\n");
+			fflush(stdout);
 			return 0;
 		}
 	}
@@ -121,17 +133,17 @@ int test_callback(int dir_fd) {
 
 	FILE *question = rdonly_fopenat(dir_fd, "question");
 	if (!question) {
-		fprintf(stderr, "failed to open question");
+		fprintf(stderr, "failed to open question\n");
 		return 0;
 	}
 	FILE *answer = rdonly_fopenat(dir_fd, "answer");
 	if (!answer) {
-		fprintf(stderr, "failed to open answer");
+		fprintf(stderr, "failed to open answer\n");
 		goto no_open_ans;
 	}
 	FILE *params = rdonly_fopenat(dir_fd, "params");
 	if (!params) {
-		fprintf(stderr, "failed to open params");
+		fprintf(stderr, "failed to open params\n");
 		goto no_open_param;
 	}
 

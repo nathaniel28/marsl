@@ -1,0 +1,6 @@
+add.a $2, $1
+add.b $-1, $2
+add.ab $-2, $2
+add.ba $1, $0
+add.f $-4, $2
+add.x $1, $-4

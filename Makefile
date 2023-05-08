@@ -1,10 +1,13 @@
 
-CFLAGS=-g -Wall -Wextra #-O3
+CFLAGS=-g -Wall -Wextra -Wno-unused-parameter #-O3
 LIBS=
+
+default: corewars
 
 include Makefile.d
 
 OBJS=address.o ops.o sim.o types.o parser.tab.o
+
 corewars: $(OBJS) main.o
 	$(CC) $(CFLAGS) $(OBJS) main.o $(LIBS) -o corewars
 
@@ -23,4 +26,4 @@ clean:
 	rm *.o
 	make depend
 	make parser
-	make corewars
+	make default

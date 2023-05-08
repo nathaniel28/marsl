@@ -9,7 +9,8 @@ extern void print_core();
 
 extern void init_core();
 
-// temporarily extern
+// temporarily extern, eventually should be replaced with something like
+// void run_match(Program *competitors, size_t cnt)
 extern void step(Program *);
 
 #endif

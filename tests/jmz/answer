@@ -1,0 +1,17 @@
+jmz.a $12, $15
+jmz.b $11, $13
+jmz.a $10, $13
+jmz.b $9, $11
+jmz.f $8, $12
+jmz.a $2, $9
+jmp $6, $0
+jmz.b $2, $8
+jmp $4, $0
+jmz.f $2, $4
+jmp $2, $0
+jmp $0, $0
+mov $0, $1
+jmz.b $0, $0
+jmz.a $0, $1
+jmz.f $1, $0
+jmz.f $1, $1

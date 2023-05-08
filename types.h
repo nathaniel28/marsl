@@ -3,7 +3,7 @@
 
 #define CORESIZE 80
 #define MAXPROCS 16
-#define MAXPROGRAMLEN 20
+#define MAXPROGRAMLEN 30
 //#define MINSEPERATION
 //#define MAXCYCLES
 
