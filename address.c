@@ -21,29 +21,32 @@ Cell *addr_b_indirect(Cell *cell, uint offset) {
 	return addr_direct(target, BFIELD(target).val);
 }
 
+#define INCR(u) if (u >= CORESIZE - 1) u = 0; else u++
+#define DECR(u) if (u == 0) u = CORESIZE - 1; else u--
+
 Cell *addr_a_indirect_predec(Cell *cell, uint offset) {
 	Cell *target = addr_direct(cell, offset);
-	AFIELD(target).val = (AFIELD(target).val - 1) % CORESIZE;
+	DECR(AFIELD(target).val);
 	return addr_direct(target, AFIELD(target).val);
 }
 
 Cell *addr_a_indirect_postinc(Cell *cell, uint offset) {
 	Cell *target = addr_direct(cell, offset);
 	Cell *res = addr_direct(target, AFIELD(target).val);
-	AFIELD(target).val = (AFIELD(target).val + 1) % CORESIZE;
+	INCR(AFIELD(target).val);
 	return res;
 }
 
 Cell *addr_b_indirect_predec(Cell *cell, uint offset) {
 	Cell *target = addr_direct(cell, offset);
-	BFIELD(target).val = (BFIELD(target).val - 1) % CORESIZE;
+	DECR(BFIELD(target).val);
 	return addr_direct(target, BFIELD(target).val);
 }
 
 Cell *addr_b_indirect_postinc(Cell *cell, uint offset) {
 	Cell *target = addr_direct(cell, offset);
 	Cell *res = addr_direct(target, BFIELD(target).val);
-	BFIELD(target).val = (BFIELD(target).val + 1) % CORESIZE;
+	INCR(BFIELD(target).val);
 	return res;
 }
 

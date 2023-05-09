@@ -231,6 +231,16 @@ int resolve_label(line *here, pfield *f) {
 
 int parse(FILE *fp, Cell *buf, uint *len) {
 	init_pstate(fp);
+
+	// The parser fails on an empty input, but an empty input should produce
+	// a zero-length output
+	int c = fgetc(fp);
+	if (c == EOF) {
+		*len = 0;
+		return 0;
+	}
+	ungetc(c, fp);
+
 	int err = yyparse();
 
 	line *l;

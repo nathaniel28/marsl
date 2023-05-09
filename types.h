@@ -50,19 +50,19 @@ typedef struct Program {
 } Program;
 
 typedef struct {
-	// src and dst store the operands for the current instruction after being
-	// deduced by Cell->addr. 
+	// src and dst store the operands for the current instruction after
+	// being deduced by Cell->addr. 
 	Cell *src, *dst;
 
-	// kill_proc is set to 0 by default-- operations do NOT need to set it if
-	// the process should NOT be killed. When set to a nonzero value, the
+	// kill_proc is set to 0 by default-- operations do NOT need to set it
+	// if the process should NOT be killed. When set to a nonzero value, the
 	// program's current process will be terminated.
 	byte kill_proc;
 
-	// ret_to defaults to 1 cell after the current instruction-- operations do
-	// NOT need to set it unless the operation is some form of jump (jmp, seq...)
-	// The current process's next instruction will be that of ret_to (wraps
-	// around to be something from core to core[CORESIZE - 1]
+	// ret_to defaults to 1 cell after the current instruction-- operations
+	// do NOT need to set it unless the operation is some form of jump
+	// (jmp, seq...). The current process's next instruction will be that of
+	// ret_to (wraps around to be something from core to core[CORESIZE - 1])
 	Cell *ret_to;
 
 	Cell *spl_to;

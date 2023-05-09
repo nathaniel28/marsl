@@ -1,6 +1,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -8,6 +9,32 @@
 #include "parser.h"
 #include "types.h"
 #include "sim.h"
+
+// cur_test must only be set by run_tests and used by sig_handler. Keep note
+// that when not in this case, it points to garbage. I want a signal handler
+// because the simulation may assert() things, which in turn can raise SIGABRT.
+// I'm not sure if an async signal handler is allowed to read from a static
+// global variable, but hey, "it works on my machine!"
+static char *cur_test;
+
+static void sig_handler(int sig) {
+	static const char msg0[] = "abort during test ";
+	static const char msg1[] = "\n...things failed way worse than usual\n";
+	if (cur_test) {
+		// Must use write() here because it is async-signal-safe while
+		// printf and friends are not.
+		write(STDERR_FILENO, msg0, sizeof(msg0) - 1);
+		// using cur_test in this signal hander is ok... hopefully
+		char *c = cur_test;
+		while (*c) {
+			write(STDERR_FILENO, c, 1);
+			c++;
+		}
+		write(STDERR_FILENO, msg1, sizeof(msg1) - 1);
+	}
+	// and don't forget to clean out /var/lib/systemd/coredump/ every once
+	// and awhile
+}
 
 // a tester returns 1 on success, and 0 on failure.
 // if a tester prints anything, it does so to stderr.
@@ -20,6 +47,16 @@ void run_tests(const char *path, tester test_fn) {
 		perror("opendir():");
 		return;
 	}
+
+	struct sigaction sa;
+	sa.sa_handler = sig_handler;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;
+	if (sigaction(SIGABRT, &sa, NULL) == -1) {
+		perror("sigaction():");
+		goto no_sigaction;
+	}
+
 	errno = 0;
 	int passed = 0, total = 0;
 	struct dirent *entry;
@@ -32,7 +69,10 @@ void run_tests(const char *path, tester test_fn) {
 			perror("openat():");
 			errno = 0;
 		} else {
+			// cur_test may be read by a signal handler
+			cur_test = entry->d_name;
 			int res = test_fn(test_dir);
+			cur_test = NULL;
 			const char *fmt = "failed test %s\n";
 			if (res) {
 				fmt = "passed test %s\n";
@@ -48,6 +88,9 @@ void run_tests(const char *path, tester test_fn) {
 
 	fprintf(stderr, "results: %d/%d\n", passed, total);
 
+	sa.sa_handler = SIG_DFL;
+	sigaction(SIGABRT, &sa, NULL);
+no_sigaction:
 	closedir(dir);
 }
 
@@ -100,7 +143,7 @@ int test_using(FILE *question, FILE *answer, FILE *params) {
 
 	init_core();
 	memcpy(core, q.source_code, sizeof(q.source_code[0]) * q.ninstrs);
-	while (steps--) {
+	while (steps-- && q.nprocs > 0) {
 		step(&q);
 	}
 

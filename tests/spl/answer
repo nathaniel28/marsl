@@ -1,0 +1,17 @@
+spl $3, $0
+mov $9, $2
+jmp $2, $0
+dat $1, $0
+spl $4, $0
+spl $2, $0
+mov $0, }4
+mov $0, }3
+mov $0, }2
+jmp $0, $0
+dat $7, $0
+mov $0, }2
+mov $0, }4
+mov $0, }3
+mov $0, }3
+mov $0, }2
+mov $0, }2

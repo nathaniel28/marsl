@@ -12,7 +12,7 @@ corewars: $(OBJS) main.o
 	$(CC) $(CFLAGS) $(OBJS) main.o $(LIBS) -o corewars
 
 parser:
-	bison -t --warnings=all parser.y
+	bison -t --warnings=all -Wcounterexamples parser.y
 	$(CC) $(CFLAGS) -c parser.tab.c
 
 test: $(OBJS) testing.o
