@@ -62,8 +62,8 @@ void yyerror(char const *);
 
 // I'm not really sure how to indent for this section
 
-line: '\n'
-    | line '\n'
+line: '\n' { /* do nothing */ }
+    | line '\n' { /* do nothing */ }
     | operation field ',' field '\n' {
 	if (++pstate.current >= pstate.lines + MAXPROGRAMLEN) {
 		fprintf(stderr, "program is too long (max length: %u instructions)\n", MAXPROGRAMLEN);

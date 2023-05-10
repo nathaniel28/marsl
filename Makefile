@@ -1,5 +1,5 @@
 
-CFLAGS=-g -Wall -Wextra -Wno-unused-parameter #-O3
+CFLAGS=-g3 -Wall -Wextra -Wno-unused-parameter #-O3
 LIBS=
 
 default: corewars

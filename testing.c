@@ -125,6 +125,7 @@ int test_using(FILE *question, FILE *answer, FILE *params) {
 	static Program q;
 	q.proc_queue[0] = 0;
 	q.nprocs = 1;
+	q.cur_proc = 0;
 	static Cell ans[CORESIZE];
 	uint ans_len;
 	if (parse(question, q.source_code, &q.ninstrs)) {
@@ -201,8 +202,31 @@ no_open_ans:
 	return res;
 }
 
-int main() {
-	run_tests("tests", test_callback);
+int main(int argc, char **argv) {
+	char *tests_dir_path = "tests";
+	if (argc > 1) {
+		argv++;
+		while (*argv) {
+			fprintf(stderr, "running single test at %s\n", *argv);
+			int test_dir = open(*argv, O_RDONLY);
+			if (test_dir == -1) {
+				fprintf(stderr, "failed to open directory\n");
+			} else {
+				char *res;
+				if (test_callback(test_dir)) {
+					res = "passed test\n";
+				} else {
+					res = "failed test\n";
+				}
+				fprintf(stderr, res);
+				close(test_dir);
+			}
+			argv++;
+		}
+	} else {
+		fprintf(stderr, "running all tests in directory %s\n", tests_dir_path);
+		run_tests(tests_dir_path, test_callback);
+	}
 
 	return 0;
 }

@@ -45,8 +45,8 @@ typedef struct Program {
 	*/
 	// buffer so that multiple programs don't read output
 	// from another program on the same turn
-	Cell task, src, dst;
-	struct Program *next; // who's turn it is next
+	Cell task, src, dst; // TODO: impliment this
+	struct Program *next; // who's turn it is next. TODO: impliment this
 } Program;
 
 typedef struct {
@@ -70,8 +70,6 @@ typedef struct {
 
 // Set in types.c
 extern Cell core[CORESIZE];
-
-// bad practice ahead! ...
 
 // used by operations to store their arguments. Set in types.c
 extern State state;
