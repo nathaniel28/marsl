@@ -249,6 +249,7 @@ int parse(FILE *fp, Cell *buf, uint *len) {
 		l = &pstate.lines[0];
 		while (l < pstate.current) {
 			if (!resolve_label(l, &l->fields[0]) || !resolve_label(l, &l->fields[1])) {
+				fprintf(stderr, "failed to resolve label\n");
 				err = -1;
 				break;
 			}

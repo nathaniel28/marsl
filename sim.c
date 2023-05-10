@@ -26,9 +26,11 @@ void print_cell(Cell *c) {
 #if 1
 #define DB_PRINT(...) fprintf(stderr, __VA_ARGS__)
 #define DB_PRINT_CELL(self) print_cell(self); fflush(stdout)
+#define DB_PRINT_PQUEUE(p) for (unsigned i = 0; i < p->nprocs; i++) DB_PRINT("%u ", p->proc_queue[i])
 #else
 #define DB_PRINT(...)
 #define DB_PRINT_CELL(self)
+#define DB_PRINT_PQUEUE(p)
 #endif
 
 void print_core() {
@@ -56,6 +58,8 @@ static Cell *resolve_field(Cell *cell, Field *field) {
 	return field->addr(cell, field->val);
 }
 
+#define INCR_PROC(p) if (p->cur_proc < p->nprocs - 1) p->cur_proc++; else p->cur_proc = 0
+
 void step(Program *p) {
 	// TODO: buffer source, destination, and self cells
 	assert(p->nprocs < MAXPROCS && p->cur_proc < p->nprocs);
@@ -78,14 +82,14 @@ void step(Program *p) {
 	if (state.kill_proc) {
 		DB_PRINT(" (process killed)");
 		DB_PRINT("\nold queue [");
-		for (unsigned i = 0; i < p->nprocs; i++) {
-			DB_PRINT("%u ", p->proc_queue[i]);
-		}
+		DB_PRINT_PQUEUE(p);
 		DB_PRINT("], now [");
 
 		p->nprocs--;
 		if (p->nprocs == 0) {
 			DB_PRINT("], %p terminated\n", p);
+			fprintf(stderr, "program termination not yet implimented, so exiting\n");
+			assert(0);
 			// TODO: handle program termination
 			return;
 		}
@@ -95,23 +99,36 @@ void step(Program *p) {
 		uint *src = dst + 1;
 		memmove(dst, src, sizeof(uint) * (p->proc_queue + p->nprocs - dst));
 
-		for (unsigned i = 0; i < p->nprocs; i++) {
-			DB_PRINT("%u ", p->proc_queue[i]);
-		}
+		DB_PRINT_PQUEUE(p);
 		DB_PRINT("]\n");
 	} else {
-		uint *cur_instr_offset = &p->proc_queue[p->cur_proc];
-		*cur_instr_offset = (state.ret_to - core) % CORESIZE;
+		uint new_instr_offset = (state.ret_to - core) % CORESIZE;
+		p->proc_queue[p->cur_proc] = new_instr_offset;
+
 		if (state.ret_to != self + 1) {
-			DB_PRINT(" (jumped to %d)", closest(*cur_instr_offset));
+			DB_PRINT(" (jumped to %d)", closest(new_instr_offset));
 		}
 
+		INCR_PROC(p);
+
 		if (state.spl_to && p->nprocs < MAXPROCS) {
-			p->proc_queue[p->nprocs] = (state.spl_to - core) % CORESIZE;
-			DB_PRINT(" (split at %u)", p->proc_queue[p->nprocs]);
+			uint spl_instr_offset = (state.spl_to - core) % CORESIZE;
+
+			DB_PRINT(" (split to %d)", closest(spl_instr_offset));
+			DB_PRINT("\nold queue [");
+			DB_PRINT_PQUEUE(p);
+			DB_PRINT("], now [");
+
 			p->nprocs++;
+			uint *src = &p->proc_queue[p->cur_proc];
+			uint *dst = src + 1;
+			memmove(dst, src, sizeof(uint) * (p->proc_queue + p->nprocs - dst));
+			p->proc_queue[p->cur_proc] = spl_instr_offset;
+			INCR_PROC(p);
+
+			DB_PRINT_PQUEUE(p);
+			DB_PRINT("]");
 		}
 		DB_PRINT("\n");
 	}
-	p->cur_proc = (p->cur_proc + 1) % p->nprocs;
 }
