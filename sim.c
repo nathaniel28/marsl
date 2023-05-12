@@ -44,8 +44,8 @@ void print_core() {
 void init_core() {
 	const Cell default_cell = {
 		.fields = {
-			{ default_addr_mode, 0 },
-			{ default_addr_mode, 0 },
+			{ 0, default_addr_mode },
+			{ 0, default_addr_mode },
 		},
 		.op = default_op,
 	};
@@ -57,6 +57,13 @@ void init_core() {
 static Cell *resolve_field(Cell *cell, Field *field) {
 	return field->addr(cell, field->val);
 }
+
+#define WRAP(u, delta) \
+do { \
+	u = (int) (u + delta) % CORESIZE; \
+	if ((int) u < 0) \
+		u += CORESIZE; \
+} while (0);
 
 #define INCR_PROC(p) if (p->cur_proc < p->nprocs - 1) p->cur_proc++; else p->cur_proc = 0
 
@@ -71,8 +78,35 @@ void step(Program *p) {
 	DB_PRINT("%p (%u@%lu/%u): ", p, p->cur_proc + 1, self - core, p->nprocs);
 	DB_PRINT_CELL(self);
 
+	// Order of operations:
+	// NOTE: Steps 1-3 must not modify the core.
+	// NOTE: 1-2 can cause changes through pre/post incriments/decriments.
+	// 1. Resolve the a-field of the current instruction. NOTE: Changes MAY
+	// influence b-field resolution the next step.
+	// 2. Resolve the b-field of the current instruction.
+	// 3. Using the source target resolved in step 1 and the destination
+	// target resolved in step 2, execute the current instruction.
+	// 4. Repeat steps 1-3 for each program with processes left.
+	// 5. Write all buffered data to the core. I don't know what happenes if
+	// two programs modify the same cell on the same frame.
+
+	// whatever this operation is gonna do, place the result(s) in this
+	// program's buffer instead of modifying the core directly
+
+	p->src_fbuf.store = NULL;
+	p->dst_fbuf.store = NULL;
+
+	state.fbuf = &p->src_fbuf;
 	state.src = resolve_field(self, &AFIELD(self));
-	state.dst = resolve_field(self, &BFIELD(self));
+
+	// TODO me, very soon: it seems that pmars resolves the first field,
+	// then USING THAT RESULT (if targeted) resolves the second field.
+
+	state.fbuf = &p->dst_fbuf;
+	p->dst_cbuf.store = resolve_field(self, &BFIELD(self));
+	p->dst_cbuf.buffer = *p->dst_cbuf.store;
+	state.dst = &p->dst_cbuf.buffer;
+
 	state.kill_proc = 0;
 	state.ret_to = self + 1;
 	state.spl_to = NULL;
@@ -130,5 +164,16 @@ void step(Program *p) {
 			DB_PRINT("]");
 		}
 		DB_PRINT("\n");
+	}
+
+	// temporarily write back to core here, but in the future wait until all
+	// programs have executed their instruction. this is fine for now
+	// because there is only one program per test
+	*p->dst_cbuf.store = p->dst_cbuf.buffer;
+	if (p->src_fbuf.store) {
+		WRAP(*p->src_fbuf.store, p->src_fbuf.buffer);
+	}
+	if (p->dst_fbuf.store) {
+		WRAP(*p->dst_fbuf.store, p->dst_fbuf.buffer);
 	}
 }

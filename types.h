@@ -10,6 +10,10 @@
 #define byte unsigned char
 #define uint unsigned int
 
+// a and b must be unsigned
+#define ADDMOD(a, b) (a + b >= CORESIZE ? a + b - CORESIZE : a + b)
+#define SUBMOD(a, b) (a - b >= CORESIZE ? a - b + CORESIZE : a - b)
+
 typedef struct Cell *(*address_mode)(struct Cell *, uint);
 
 typedef void (*operation)();
@@ -17,8 +21,8 @@ typedef void (*operation)();
 typedef struct {
 	// see https://corewar-docs.readthedocs.io/en/latest/redcode/addressing_modes
 	// and see address.c for the implimentation
-	address_mode addr;
 	uint val;
+	address_mode addr;
 } Field;
 
 typedef struct Cell {
@@ -32,20 +36,26 @@ typedef struct Cell {
 #define AFIELD(cell) (cell->fields[0])
 #define BFIELD(cell) (cell->fields[1])
 
+typedef struct {
+	Cell buffer;
+	Cell *store;
+} Cellbuf;
+
+typedef struct {
+	uint buffer;
+	uint *store;
+} Fieldbuf;
+
 typedef struct Program {
 	Cell source_code[MAXPROGRAMLEN];
 	uint ninstrs;
 	uint proc_queue[MAXPROCS];
 	uint nprocs;
 	uint cur_proc;
-	/*
-	Cell *procs[MAXPROCS];
-	uint nprocs;
-	Cell *cur_proc;
-	*/
-	// buffer so that multiple programs don't read output
-	// from another program on the same turn
-	Cell task, src, dst; // TODO: impliment this
+
+	Cellbuf dst_cbuf;
+	Fieldbuf src_fbuf, dst_fbuf;
+
 	struct Program *next; // who's turn it is next. TODO: impliment this
 } Program;
 
@@ -53,6 +63,8 @@ typedef struct {
 	// src and dst store the operands for the current instruction after
 	// being deduced by Cell->addr. 
 	Cell *src, *dst;
+
+	Fieldbuf *fbuf;
 
 	// kill_proc is set to 0 by default-- operations do NOT need to set it
 	// if the process should NOT be killed. When set to a nonzero value, the

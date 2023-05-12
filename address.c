@@ -21,32 +21,38 @@ Cell *addr_b_indirect(Cell *cell, uint offset) {
 	return addr_direct(target, BFIELD(target).val);
 }
 
-#define INCR(u) if (u >= CORESIZE - 1) u = 0; else u++
-#define DECR(u) if (u == 0) u = CORESIZE - 1; else u--
+#define INCR(u) (u >= CORESIZE - 1 ? 0 : u + 1)
+#define DECR(u) (u == 0 ? CORESIZE - 1 : u - 1)
 
 Cell *addr_a_indirect_predec(Cell *cell, uint offset) {
 	Cell *target = addr_direct(cell, offset);
-	DECR(AFIELD(target).val);
-	return addr_direct(target, AFIELD(target).val);
+	offset = DECR(AFIELD(target).val);
+	state.fbuf->buffer = -1;
+	state.fbuf->store = &AFIELD(target).val;
+	return addr_direct(target, offset);
 }
 
 Cell *addr_a_indirect_postinc(Cell *cell, uint offset) {
 	Cell *target = addr_direct(cell, offset);
 	Cell *res = addr_direct(target, AFIELD(target).val);
-	INCR(AFIELD(target).val);
+	state.fbuf->buffer = 1;
+	state.fbuf->store = &AFIELD(target).val;
 	return res;
 }
 
 Cell *addr_b_indirect_predec(Cell *cell, uint offset) {
 	Cell *target = addr_direct(cell, offset);
-	DECR(BFIELD(target).val);
-	return addr_direct(target, BFIELD(target).val);
+	offset = DECR(BFIELD(target).val);
+	state.fbuf->buffer = -1;
+	state.fbuf->store = &BFIELD(target).val;
+	return addr_direct(target, offset);
 }
 
 Cell *addr_b_indirect_postinc(Cell *cell, uint offset) {
 	Cell *target = addr_direct(cell, offset);
 	Cell *res = addr_direct(target, BFIELD(target).val);
-	INCR(BFIELD(target).val);
+	state.fbuf->buffer = 1;
+	state.fbuf->store = &BFIELD(target).val;
 	return res;
 }
 
