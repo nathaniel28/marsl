@@ -42,11 +42,11 @@ typedef int (*tester)(int dir_fd);
 
 void run_tests(const char *path, tester test_fn) {
 	DIR *dir = opendir(path);
-	int dir_fd = dirfd(dir);
 	if (!dir) {
 		perror("opendir():");
 		return;
 	}
+	int dir_fd = dirfd(dir);
 
 	struct sigaction sa;
 	sa.sa_handler = sig_handler;
