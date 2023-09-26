@@ -165,15 +165,28 @@ void step(Program *p) {
 		}
 		DB_PRINT("\n");
 	}
+}
 
-	// temporarily write back to core here, but in the future wait until all
-	// programs have executed their instruction. this is fine for now
-	// because there is only one program per test
-	*p->dst_cbuf.store = p->dst_cbuf.buffer;
-	if (p->src_fbuf.store) {
-		WRAP(*p->src_fbuf.store, p->src_fbuf.buffer);
+void run(Program *start) {
+	// simulate each program
+	Program *p = start;
+	while (p) {
+		step(p);
+		p = p->next;
 	}
-	if (p->dst_fbuf.store) {
-		WRAP(*p->dst_fbuf.store, p->dst_fbuf.buffer);
+
+	// write the results back to the core
+	// TODO: what is supposed to happen if two programs write to the same
+	// cell? Currently, the last program wins the write.
+	p = start;
+	while (p) {
+		*p->dst_cbuf.store = p->dst_cbuf.buffer;
+		if (p->src_fbuf.store) {
+			WRAP(*p->src_fbuf.store, p->src_fbuf.buffer);
+		}
+		if (p->dst_fbuf.store) {
+			WRAP(*p->dst_fbuf.store, p->dst_fbuf.buffer);
+		}
+		p = p->next;
 	}
 }

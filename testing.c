@@ -126,6 +126,7 @@ int test_using(FILE *question, FILE *answer, FILE *params) {
 	q.proc_queue[0] = 0;
 	q.nprocs = 1;
 	q.cur_proc = 0;
+	q.next = NULL;
 	static Cell ans[CORESIZE];
 	uint ans_len;
 	if (parse(question, q.source_code, &q.ninstrs)) {
@@ -145,7 +146,7 @@ int test_using(FILE *question, FILE *answer, FILE *params) {
 	init_core();
 	memcpy(core, q.source_code, sizeof(q.source_code[0]) * q.ninstrs);
 	while (steps-- && q.nprocs > 0) {
-		step(&q);
+		run(&q);
 	}
 
 	for (uint i = 0; i < ans_len; i++) {
