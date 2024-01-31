@@ -271,6 +271,19 @@ uint8_t mode_from_name(const char *name) {
 	return OM_INVALID;
 }
 
+const char *name_from_mode(uint8_t mode) {
+	switch (mode) {
+	case OM_AA: return "a";
+	case OM_AB: return "ab";
+	case OM_BA: return "ba";
+	case OM_BB: return "b";
+	case OM_F: return "f";
+	case OM_X: return "x";
+	case OM_I: return "i";
+	}
+	return "?";
+}
+
 // name must be a pointer to at least 3 characters.
 uint8_t op_from_name(const char *name) {
 	for (uint8_t i = 0; i < OP_NB; i++) {

@@ -15,12 +15,13 @@ int32_t closest(uint32_t u) {
 
 void print_cell(Cell *c) {
 	printf(
-		"%s %c%d, %c%d",
+		"%s.%s %c%d, %c%d",
 		name_from_op(c->operation),
+		name_from_mode(c->op_mode),
 		char_from_addr_method(c->addr_modes[AFIELD]),
 		closest(c->values[AFIELD]),
 		char_from_addr_method(c->addr_modes[BFIELD]),
-		closest(c->addr_modes[BFIELD])
+		closest(c->values[BFIELD])
 	);
 }
 
@@ -96,65 +97,60 @@ void step(Program *p) {
 	// TODO me, very soon: it seems that pmars resolves the first field,
 	// then USING THAT RESULT (if targeted) resolves the second field.
 
-	/*
-	state.kill_proc = 0;
-	state.ret_to = self + 1;
-	state.spl_to = NULL;
-	*/
-
 	_Bool kill_proc = 0;
 	int ret_to = instr + 1;
 	int spl_to = -1;
 
 	Cell *src = core + resolve_field(instr, AFIELD, &p->src_fbuf);
-	Cell *dst = core + resolve_field(instr, BFIELD, &p->dst_fbuf);
+	p->dst_cbuf.store = core + resolve_field(instr, BFIELD, &p->dst_fbuf);
+	p->dst_cbuf.buffer = *p->dst_cbuf.store;
 
 	switch (self->operation) {
 	case OP_DAT:
 		kill_proc = 1;
                 break;
         case OP_MOV:
-		mov(src, dst, self->op_mode);
+		mov(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
         case OP_ADD:
-		add(src, dst, self->op_mode);
+		add(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
         case OP_SUB:
-		sub(src, dst, self->op_mode);
+		sub(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
         case OP_MUL:
-		mul(src, dst, self->op_mode);
+		mul(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
         case OP_DIV:
-		kill_proc = div_(src, dst, self->op_mode);
+		kill_proc = div_(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
         case OP_MOD:
-		kill_proc = mod(src, dst, self->op_mode);
+		kill_proc = mod(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
 	/*
         case OP_JMP:
-		ret_to = jmp(src, dst, self->op_mode);
+		ret_to = jmp(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
         case OP_JMZ:
-		ret_to = jmz(src, dst, self->op_mode);
+		ret_to = jmz(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
         case OP_JMN:
-		ret_to = jmz(src, dst, self->op_mode);
+		ret_to = jmz(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
         case OP_DJN:
-		ret_to = djn(src, dst, self->op_mode);
+		ret_to = djn(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
         case OP_SEQ:
-		ret_to = seq(src, dst, self->op_mode);
+		ret_to = seq(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
         case OP_SNE:
-		ret_to = sne(src, dst, self->op_mode);
+		ret_to = sne(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
         case OP_SLT:
-		ret_to = slt(src, dst, self->op_mode);
+		ret_to = slt(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
         case OP_SPL:
-		spl_to = spl(src, dst, self->op_mode);
+		spl_to = spl(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
 	*/
         case OP_NOP:
@@ -234,6 +230,13 @@ void run(Program *start) {
 	// cell? Currently, the last program wins the write.
 	p = start;
 	while (p) {
+		/*
+		DB_PRINT("replace [");
+		DB_PRINT_CELL(p->dst_cbuf.store);
+		DB_PRINT("]@%ld with [", p->dst_cbuf.store - core);
+		DB_PRINT_CELL(&p->dst_cbuf.buffer);
+		DB_PRINT("]\n");
+		*/
 		*p->dst_cbuf.store = p->dst_cbuf.buffer;
 		if (p->src_fbuf.store) {
 			WRAP(*p->src_fbuf.store, p->src_fbuf.buffer);
@@ -243,4 +246,5 @@ void run(Program *start) {
 		}
 		p = p->next;
 	}
+	print_core();
 }

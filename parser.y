@@ -80,7 +80,7 @@ field: '#' location { SET_FIELD(AM_IMMEDIATE); }
      | '{' location { SET_FIELD(AM_INDIRECT_A_PREDEC); }
      | '<' location { SET_FIELD(AM_INDIRECT_B_PREDEC); }
      | '}' location { SET_FIELD(AM_INDIRECT_A_POSTINC); }
-     | '>' location { SET_FIELD(AM_INDIRECT_A_POSTINC); }
+     | '>' location { SET_FIELD(AM_INDIRECT_B_POSTINC); }
      ;
 
 location: NUM { pstate.active_field->label = NULL; pstate.active_field->val = $1; }

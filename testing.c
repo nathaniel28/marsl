@@ -102,8 +102,6 @@ FILE *rdonly_fopenat(int dir_fd, const char *path) {
 	return fdopen(fd, "r");
 }
 
-#define CMP_FIELDS(a, b) ((a).addr == (b).addr && (a).val == (b).val)
-
 /*
  * tests should appear as such:
  * /the_dir_passed_to_run_tests
@@ -128,7 +126,7 @@ int test_using(FILE *question, FILE *answer, FILE *params) {
 	q.cur_proc = 0;
 	q.next = NULL;
 	static Cell ans[CORESIZE];
-	uint ans_len;
+	int ans_len;
 	if (parse(question, q.source_code, &q.ninstrs)) {
 		fprintf(stderr, "failed to parse question\n");
 		return 0;
@@ -137,7 +135,7 @@ int test_using(FILE *question, FILE *answer, FILE *params) {
 		fprintf(stderr, "failed to parse answer\n");
 		return 0;
 	}
-	uint steps;
+	unsigned steps;
 	if (fscanf(params, "%u", &steps) != 1) {
 		fprintf(stderr, "failed to read number of steps\n");
 		return 0;
@@ -149,11 +147,14 @@ int test_using(FILE *question, FILE *answer, FILE *params) {
 		run(&q);
 	}
 
-	for (uint i = 0; i < ans_len; i++) {
+	for (int i = 0; i < ans_len; i++) {
 		if (
-			core[i].op != ans[i].op
-			|| !CMP_FIELDS(core[i].fields[0], ans[i].fields[0])
-			|| !CMP_FIELDS(core[i].fields[1], ans[i].fields[1])
+			core[i].operation != ans[i].operation
+			|| core[i].op_mode != ans[i].op_mode
+			|| core[i].values[0] != ans[i].values[0]
+			|| core[i].values[1] != ans[i].values[1]
+			|| core[i].addr_modes[0] != ans[i].addr_modes[0]
+			|| core[i].addr_modes[1] != ans[i].addr_modes[1]
 		) {
 			fprintf(stderr, "discrepancy in cell %u:\n", i);
 			// reason for mixing stdout and stderr: print_cell

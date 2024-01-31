@@ -9,10 +9,10 @@ typedef struct {
 } named_op;
 
 extern uint8_t op_from_name(const char *);
-
 extern const char *name_from_op(uint8_t op);
 
 extern uint8_t mode_from_name(const char *name);
+extern const char *name_from_mode(uint8_t mode);
 
 extern uint8_t default_op_mode(uint8_t op);
 
