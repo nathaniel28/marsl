@@ -1,26 +1,72 @@
 #include <stddef.h>
+#include <stdlib.h>
 
 #include "address.h"
 #include "types.h"
 
-Cell *addr_immediate(Cell *cell, uint offset) {
-	return cell;
+int offset(int cell, int delta) {
+        cell = (cell + delta) % CORESIZE;
+        if (cell < 0)
+                return cell + CORESIZE;
+        return cell;
 }
 
-Cell *addr_direct(Cell *cell, uint offset) {
-	return core + (cell - core + offset) % CORESIZE;
+int indirect(int cell, int field) {
+        return offset(cell, core[cell].values[field]);
 }
 
-Cell *addr_a_indirect(Cell *cell, uint offset) {
-	Cell *target = addr_direct(cell, offset);
-	return addr_direct(target, AFIELD(target).val);
+int resolve_field(int cell, int field, Valuebuf *vb) {
+        int delta;
+        switch (core[cell].addr_modes[field]) {
+        case AM_IMMEDIATE:
+                return 0;
+        case AM_DIRECT:
+                return indirect(cell, field);
+        case AM_INDIRECT_A:
+                cell = indirect(cell, field);
+                return indirect(cell, AFIELD);
+        case AM_INDIRECT_B:
+                cell = indirect(cell, field);
+                return indirect(cell, BFIELD);
+        case AM_INDIRECT_A_PREDEC:
+                cell = indirect(cell, field);
+                delta = core[cell].values[AFIELD] - 1;
+                if (unlikely(delta < 0))
+                        delta = CORESIZE - 1;
+                vb->store = &core[cell].values[AFIELD];
+                vb->buffer = delta;
+                return offset(cell, delta);
+        case AM_INDIRECT_B_PREDEC:
+                cell = indirect(cell, field);
+                delta = core[cell].values[BFIELD] - 1;
+                if (unlikely(delta < 0))
+                        delta = CORESIZE - 1;
+                vb->store = &core[cell].values[BFIELD];
+                vb->buffer = delta;
+                return offset(cell, delta);
+        case AM_INDIRECT_A_POSTINC:
+                cell = indirect(cell, field);
+                delta = core[cell].values[AFIELD] + 1;
+                if (unlikely(delta >= CORESIZE))
+                        delta = 0;
+                vb->store = &core[cell].values[AFIELD];
+                vb->buffer = delta;
+                return indirect(cell, AFIELD);
+        case AM_INDIRECT_B_POSTINC:
+                cell = indirect(cell, field);
+                delta = core[cell].values[BFIELD] + 1;
+                if (unlikely(delta >= CORESIZE))
+                        delta = 0;
+                vb->store = &core[cell].values[BFIELD];
+                vb->buffer = delta;
+                return indirect(cell, BFIELD);
+        default:
+                // TODO: say an error
+                abort();
+        }
 }
 
-Cell *addr_b_indirect(Cell *cell, uint offset) {
-	Cell *target = addr_direct(cell, offset);
-	return addr_direct(target, BFIELD(target).val);
-}
-
+/*
 #define INCR(u) (u >= CORESIZE - 1 ? 0 : u + 1)
 #define DECR(u) (u == 0 ? CORESIZE - 1 : u - 1)
 
@@ -55,31 +101,32 @@ Cell *addr_b_indirect_postinc(Cell *cell, uint offset) {
 	state.fbuf->store = &BFIELD(target).val;
 	return res;
 }
+*/
 
-const address_mode default_addr_mode = addr_direct;
-
-address_mode addr_method_from_char(char c) {
+uint8_t addr_method_from_char(char c) {
 	switch (c) {
-	case '#': return addr_immediate;
-	case '$': return addr_direct;
-	case '*': return addr_a_indirect;
-	case '{': return addr_a_indirect_predec;
-	case '}': return addr_a_indirect_postinc;
-	case '@': return addr_b_indirect;
-	case '<': return addr_b_indirect_predec;
-	case '>': return addr_b_indirect_postinc;
+	case '#': return AM_IMMEDIATE;
+	case '$': return AM_DIRECT;
+	case '*': return AM_INDIRECT_A;
+	case '@': return AM_INDIRECT_B;
+	case '{': return AM_INDIRECT_A_PREDEC;
+	case '<': return AM_INDIRECT_B_PREDEC;
+	case '}': return AM_INDIRECT_A_POSTINC;
+	case '>': return AM_INDIRECT_B_POSTINC;
 	}
-	return NULL;
+	return AM_INVALID;
 }
 
-char char_from_addr_method(address_mode m) {
-	if (m == addr_immediate) return '#';
-	if (m == addr_direct) return '$';
-	if (m == addr_a_indirect) return '*';
-	if (m == addr_a_indirect_predec) return '{';
-	if (m == addr_a_indirect_postinc) return '}';
-	if (m == addr_b_indirect) return '@';
-	if (m == addr_b_indirect_predec) return '<';
-	if (m == addr_b_indirect_postinc) return '>';
+char char_from_addr_method(uint8_t m) {
+	switch (m) {
+	case AM_IMMEDIATE: return '#';
+	case AM_DIRECT: return '$';
+	case AM_INDIRECT_A: return '*';
+	case AM_INDIRECT_B: return '@';
+	case AM_INDIRECT_A_PREDEC: return '{';
+	case AM_INDIRECT_B_PREDEC: return '<';
+	case AM_INDIRECT_A_POSTINC: return '}';
+	case AM_INDIRECT_B_POSTINC: return '>';
+	}
 	return '?';
 }

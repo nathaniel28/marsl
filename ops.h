@@ -3,22 +3,25 @@
 
 #include "types.h"
 
-// the order of op_id better match the registry struct defined in ops.c...
-enum op_id { MOV, DAT, ADD, SUB, MUL, DIV, MOD, JMP, JMZ, JMN, DJN, SEQ, SNE, SLT, SPL, NOP, OP_NB, OP_INVALID };
-enum mode_id { M_A, M_B, M_AB, M_BA, M_F, M_X, M_I, M_NB, M_INVALID };
-
 typedef struct {
-	char name[3];
-	operation modes[M_NB];
-	operation default_mode;
+	char name[4];
+	uint8_t default_mode;
 } named_op;
 
-extern const named_op op_registry[OP_NB];
+extern uint8_t op_from_name(const char *);
 
-extern operation op_from_name(const char *, const char *);
+extern const char *name_from_op(uint8_t op);
 
-extern const char *name_from_op(operation);
+extern uint8_t mode_from_name(const char *name);
 
-extern enum mode_id mode_from_name(const char *);
+extern uint8_t default_op_mode(uint8_t op);
+
+extern void mov(Cell *src, Cell *dst, uint8_t mode);
+extern void add(Cell *src, Cell *dst, uint8_t mode);
+extern void sub(Cell *src, Cell *dst, uint8_t mode);
+extern void mul(Cell *src, Cell *dst, uint8_t mode);
+
+extern _Bool div_(Cell *src, Cell *dst, uint8_t mode);
+extern _Bool mod(Cell *src, Cell *dst, uint8_t mode);
 
 #endif

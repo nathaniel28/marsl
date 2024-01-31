@@ -3,22 +3,10 @@
 
 #include "types.h"
 
-// Making all of these extern is kinda gross, but they're needed by
-// the parser. The parser also needs to know the operations but does
-// so differently, using an enum and constant global array (see
-// op_registry in ops.h and ops.c)
+extern int resolve_field(int cell, int field, Valuebuf *vb);
 
-extern Cell *addr_immediate(Cell *, uint);
-extern Cell *addr_direct(Cell *cell, uint offset);
-extern Cell *addr_a_indirect(Cell *, uint);
-extern Cell *addr_b_indirect(Cell *, uint);
-extern Cell *addr_a_indirect_predec(Cell *, uint);
-extern Cell *addr_a_indirect_postinc(Cell *, uint);
-extern Cell *addr_b_indirect_predec(Cell *, uint);
-extern Cell *addr_b_indirect_postinc(Cell *, uint);
+extern uint8_t addr_method_from_char(char c);
 
-extern address_mode addr_method_from_char(char c);
-
-extern char char_from_addr_method(address_mode m);
+extern char char_from_addr_method(uint8_t m);
 
 #endif

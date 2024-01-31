@@ -9,17 +9,16 @@
 #include "ops.h"
 
 typedef struct {
-	address_mode addr;
 	char *label;
-	uint val;
+	uint32_t val;
+	uint8_t addr_mode;
 } pfield;
 
 typedef struct {
 	char *label;
-	enum op_id op;
-	//enum mode_id mode;
-	operation resolved_op;
 	pfield fields[2];
+	uint8_t op;
+	uint8_t op_mode;
 } line;
 
 // parse state, sorta using this like a namespace thing, container for globals
@@ -42,7 +41,7 @@ void init_pstate(FILE *fp) {
 			fprintf(stderr, "instruction has too many fields\n"); \
 			YYABORT; \
 		} \
-		pstate.active_field->addr = v; \
+		pstate.active_field->addr_mode = v; \
 		pstate.active_field++; \
 	} while (0);
 
@@ -54,9 +53,9 @@ void yyerror(char const *);
 %}
 
 %define api.value.type union
-%token <uint> NUM
+%token <uint32_t> NUM
 %token <char *> STR
-%token <enum op_id> OP
+%token <uint8_t> OP
 
 %%
 
@@ -73,15 +72,15 @@ line: '\n' { /* do nothing */ }
 }
     ;
 
-// using functions defined in address.h
-field: '#' location { SET_FIELD(addr_immediate); }
-     | '$' location { SET_FIELD(addr_direct); }
-     | '*' location { SET_FIELD(addr_a_indirect); }
-     | '@' location { SET_FIELD(addr_b_indirect); }
-     | '}' location { SET_FIELD(addr_a_indirect_postinc); }
-     | '{' location { SET_FIELD(addr_a_indirect_predec); }
-     | '>' location { SET_FIELD(addr_b_indirect_postinc); }
-     | '<' location { SET_FIELD(addr_b_indirect_predec); }
+// macros defined in types.h
+field: '#' location { SET_FIELD(AM_IMMEDIATE); }
+     | '$' location { SET_FIELD(AM_DIRECT); }
+     | '*' location { SET_FIELD(AM_INDIRECT_A); }
+     | '@' location { SET_FIELD(AM_INDIRECT_B); }
+     | '{' location { SET_FIELD(AM_INDIRECT_A_PREDEC); }
+     | '<' location { SET_FIELD(AM_INDIRECT_B_PREDEC); }
+     | '}' location { SET_FIELD(AM_INDIRECT_A_POSTINC); }
+     | '>' location { SET_FIELD(AM_INDIRECT_A_POSTINC); }
      ;
 
 location: NUM { pstate.active_field->label = NULL; pstate.active_field->val = $1; }
@@ -89,15 +88,15 @@ location: NUM { pstate.active_field->label = NULL; pstate.active_field->val = $1
 	;
 
 // prefix or prefix <mode>
-operation: prefix { pstate.current->resolved_op = op_registry[pstate.current->op].default_mode; }
+operation: prefix { pstate.current->op_mode = default_op_mode(pstate.current->op); }
 	 | prefix '.' STR {
-	enum mode_id m = mode_from_name($3);
+	uint8_t m = mode_from_name($3);
 	free($3);
-	if (m == M_INVALID) {
+	if (m == OM_INVALID) {
 		fprintf(stderr, "invalid addressing mode\n");
 		YYABORT;
 	}
-	pstate.current->resolved_op = op_registry[pstate.current->op].modes[m];
+	pstate.current->op_mode = m;
 }
 	 ;
 
@@ -177,14 +176,11 @@ int yylex() {
 		ungetc(c, pstate.file);
 		buf[pos] = '\0';
 		if (pos == 3) { // names of ops are 3 chars long
-			for (uint i = 0; i < OP_NB; i++) {
-				// again, names of ops are 3 chars long
-				if (!memcmp(buf, op_registry[i].name, 3)) {
-//printf("operation %s\n", buf);
-					free(buf);
-					yylval.OP = i;
-					return OP;
-				}
+			uint8_t op = op_from_name(buf);
+			if (op != OP_INVALID) {
+				free(buf);
+				yylval.OP = op;
+				return OP;
 			}
 		}
 
@@ -229,7 +225,10 @@ int resolve_label(line *here, pfield *f) {
 	return 1;
 }
 
-int parse(FILE *fp, Cell *buf, uint *len) {
+// fp is the open file to parse from;
+// the parsed program will be written to buf, which is of size MAXPROGRAMLEN
+// len is the location to set the length of the parsed program
+int parse(FILE *fp, Cell *buf, int *len) {
 	init_pstate(fp);
 
 	// The parser fails on an empty input, but an empty input should produce
@@ -254,11 +253,11 @@ int parse(FILE *fp, Cell *buf, uint *len) {
 				break;
 			}
 
-			buf->op = l->resolved_op;
-			buf->fields[0].addr = l->fields[0].addr;
-			buf->fields[0].val = l->fields[0].val;
-			buf->fields[1].addr = l->fields[1].addr;
-			buf->fields[1].val = l->fields[1].val;
+			buf->operation = l->op;
+			buf->values[0] = l->fields[0].val;
+			buf->addr_modes[0] = l->fields[0].addr_mode;
+			buf->values[1] = l->fields[1].val;
+			buf->addr_modes[1] = l->fields[1].addr_mode;
 
 			buf++;
 			l++;

@@ -1,95 +1,100 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include <stdint.h>
+
+#define likely(x) __builtin_expect(!!(x), 1)
+#define unlikely(x) __builtin_expect(!!(x), 0)
+
 #define CORESIZE 80
 #define MAXPROCS 16
 #define MAXPROGRAMLEN 30
 //#define MINSEPERATION
 //#define MAXCYCLES
 
-#define byte unsigned char
-#define uint unsigned int
+// address modes
+#define AM_IMMEDIATE 0
+#define AM_DIRECT 1
+#define AM_INDIRECT_A 2
+#define AM_INDIRECT_B 3
+#define AM_INDIRECT_A_PREDEC 4
+#define AM_INDIRECT_B_PREDEC 5
+#define AM_INDIRECT_A_POSTINC 6
+#define AM_INDIRECT_B_POSTINC 7
+#define AM_DEFAULT AM_DIRECT
+#define AM_INVALID 255
+
+// operations
+#define OP_DAT 0
+#define OP_MOV 1
+#define OP_ADD 2
+#define OP_SUB 3
+#define OP_MUL 4
+#define OP_DIV 5
+#define OP_MOD 6
+#define OP_JMP 7
+#define OP_JMZ 8
+#define OP_JMN 9
+#define OP_DJN 10
+#define OP_SEQ 11
+#define OP_SNE 12
+#define OP_SLT 13
+#define OP_SPL 14
+#define OP_NOP 15
+#define OP_NB 16
+#define OP_DEFAULT OP_DAT
+#define OP_INVALID 255
+
+// operation modes
+#define OM_AA 0
+#define OM_AB 1
+#define OM_BA 2
+#define OM_BB 3
+#define OM_F 4
+#define OM_X 5
+#define OM_I 6
+#define OM_DEFAULT OM_F
+#define OM_INVALID 255
 
 // a and b must be unsigned
 #define ADDMOD(a, b) (a + b >= CORESIZE ? a + b - CORESIZE : a + b)
 #define SUBMOD(a, b) (a - b >= CORESIZE ? a - b + CORESIZE : a - b)
 
-typedef struct Cell *(*address_mode)(struct Cell *, uint);
-
-typedef void (*operation)();
-
 typedef struct {
-	// see https://corewar-docs.readthedocs.io/en/latest/redcode/addressing_modes
-	// and see address.c for the implimentation
-	uint val;
-	address_mode addr;
-} Field;
-
-typedef struct Cell {
-	// the A field is fields[0]
-	// the B field is fields[1]
-	// ...see below macros AFIELD and BFIELD
-	Field fields[2];
-	operation op;
+        uint32_t values[2];
+        uint8_t addr_modes[2]; // see AM_* macros
+        uint8_t operation; // see OP_* macros
+        uint8_t op_mode; // see OM_* macros
 } Cell;
 
-#define AFIELD(cell) (cell->fields[0])
-#define BFIELD(cell) (cell->fields[1])
+#define AFIELD 0
+#define BFIELD 1
 
 typedef struct {
-	Cell buffer;
 	Cell *store;
+	Cell buffer;
 } Cellbuf;
 
 typedef struct {
-	uint buffer;
-	uint *store;
-} Fieldbuf;
+	uint32_t *store;
+	uint32_t buffer;
+} Valuebuf;
 
 typedef struct Program {
 	Cell source_code[MAXPROGRAMLEN];
-	uint ninstrs;
-	uint proc_queue[MAXPROCS];
-	uint nprocs;
-	uint cur_proc;
+	int ninstrs;
+
+	int proc_queue[MAXPROCS];
+	int nprocs;
+	int cur_proc;
 
 	Cellbuf dst_cbuf;
-	Fieldbuf src_fbuf, dst_fbuf;
+	Valuebuf src_fbuf, dst_fbuf;
 
 	struct Program *next; // who's turn it is next. TODO: impliment this
 } Program;
 
-typedef struct {
-	// src and dst store the operands for the current instruction after
-	// being deduced by Cell->addr. 
-	Cell *src, *dst;
-
-	Fieldbuf *fbuf;
-
-	// kill_proc is set to 0 by default-- operations do NOT need to set it
-	// if the process should NOT be killed. When set to a nonzero value, the
-	// program's current process will be terminated.
-	byte kill_proc;
-
-	// ret_to defaults to 1 cell after the current instruction-- operations
-	// do NOT need to set it unless the operation is some form of jump
-	// (jmp, seq...). The current process's next instruction will be that of
-	// ret_to (wraps around to be something from core to core[CORESIZE - 1])
-	Cell *ret_to;
-
-	Cell *spl_to;
-} State;
-
 // Set in types.c
 extern Cell core[CORESIZE];
-
-// used by operations to store their arguments. Set in types.c
-extern State state;
-
-// Set in address.c
-extern const address_mode default_addr_mode;
-
-// Set in ops.c
-extern const operation default_op;
 
 #endif

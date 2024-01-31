@@ -1,32 +1,33 @@
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "address.h"
 #include "ops.h"
 #include "sim.h"
 
-static int closest(uint u) {
-	int r1 = u % CORESIZE;
-	int r2 = r1 - CORESIZE;
+int32_t closest(uint32_t u) {
+	int32_t r1 = u % CORESIZE;
+	int32_t r2 = r1 - CORESIZE;
 	return -r2 < r1 ? r2 : r1;
 }
 
 void print_cell(Cell *c) {
 	printf(
 		"%s %c%d, %c%d",
-		name_from_op(c->op),
-		char_from_addr_method(AFIELD(c).addr),
-		closest(AFIELD(c).val),
-		char_from_addr_method(BFIELD(c).addr),
-		closest(BFIELD(c).val)
+		name_from_op(c->operation),
+		char_from_addr_method(c->addr_modes[AFIELD]),
+		closest(c->values[AFIELD]),
+		char_from_addr_method(c->addr_modes[BFIELD]),
+		closest(c->addr_modes[BFIELD])
 	);
 }
 
 #if 1
 #define DB_PRINT(...) fprintf(stderr, __VA_ARGS__)
 #define DB_PRINT_CELL(self) print_cell(self); fflush(stdout)
-#define DB_PRINT_PQUEUE(p) for (unsigned i = 0; i < p->nprocs; i++) DB_PRINT("%u ", p->proc_queue[i])
+#define DB_PRINT_PQUEUE(p) do { for (int i = 0; i < p->nprocs; i++) DB_PRINT("%u ", p->proc_queue[i]); } while (0)
 #else
 #define DB_PRINT(...)
 #define DB_PRINT_CELL(self)
@@ -43,19 +44,14 @@ void print_core() {
 
 void init_core() {
 	const Cell default_cell = {
-		.fields = {
-			{ 0, default_addr_mode },
-			{ 0, default_addr_mode },
-		},
-		.op = default_op,
+		.values = { 0, 0 },
+		.addr_modes = { AM_DEFAULT, AM_DEFAULT },
+		.operation = OP_DEFAULT,
+		.op_mode = OM_DEFAULT,
 	};
-	for (Cell *cur = core; cur < core + CORESIZE; cur++) {
-		*cur = default_cell;
+	for (int i = 0; i < CORESIZE; i++) {
+		core[i] = default_cell;
 	}
-}
-
-static Cell *resolve_field(Cell *cell, Field *field) {
-	return field->addr(cell, field->val);
 }
 
 #define WRAP(u, delta) \
@@ -70,12 +66,12 @@ do { \
 void step(Program *p) {
 	// TODO: buffer source, destination, and self cells
 	assert(p->nprocs < MAXPROCS && p->cur_proc < p->nprocs);
-	uint instruction = p->proc_queue[p->cur_proc];
-	assert(instruction < CORESIZE);
-	Cell *self = core + instruction;
-	assert(self->op && AFIELD(self).addr && BFIELD(self).addr);
+	int instr = p->proc_queue[p->cur_proc];
+	assert(instr < CORESIZE);
 
-	DB_PRINT("%p (%u@%lu/%u): ", p, p->cur_proc + 1, self - core, p->nprocs);
+	Cell *self = core + instr;
+
+	DB_PRINT("%p (%u@%d/%d): ", p, p->cur_proc + 1, instr, p->nprocs);
 	DB_PRINT_CELL(self);
 
 	// Order of operations:
@@ -93,27 +89,82 @@ void step(Program *p) {
 	// whatever this operation is gonna do, place the result(s) in this
 	// program's buffer instead of modifying the core directly
 
+	p->dst_cbuf.store = NULL;
 	p->src_fbuf.store = NULL;
 	p->dst_fbuf.store = NULL;
-
-	state.fbuf = &p->src_fbuf;
-	state.src = resolve_field(self, &AFIELD(self));
 
 	// TODO me, very soon: it seems that pmars resolves the first field,
 	// then USING THAT RESULT (if targeted) resolves the second field.
 
-	state.fbuf = &p->dst_fbuf;
-	p->dst_cbuf.store = resolve_field(self, &BFIELD(self));
-	p->dst_cbuf.buffer = *p->dst_cbuf.store;
-	state.dst = &p->dst_cbuf.buffer;
-
+	/*
 	state.kill_proc = 0;
 	state.ret_to = self + 1;
 	state.spl_to = NULL;
+	*/
 
-	self->op();
+	_Bool kill_proc = 0;
+	int ret_to = instr + 1;
+	int spl_to = -1;
 
-	if (state.kill_proc) {
+	Cell *src = core + resolve_field(instr, AFIELD, &p->src_fbuf);
+	Cell *dst = core + resolve_field(instr, BFIELD, &p->dst_fbuf);
+
+	switch (self->operation) {
+	case OP_DAT:
+		kill_proc = 1;
+                break;
+        case OP_MOV:
+		mov(src, dst, self->op_mode);
+		break;
+        case OP_ADD:
+		add(src, dst, self->op_mode);
+		break;
+        case OP_SUB:
+		sub(src, dst, self->op_mode);
+		break;
+        case OP_MUL:
+		mul(src, dst, self->op_mode);
+		break;
+        case OP_DIV:
+		kill_proc = div_(src, dst, self->op_mode);
+		break;
+        case OP_MOD:
+		kill_proc = mod(src, dst, self->op_mode);
+		break;
+	/*
+        case OP_JMP:
+		ret_to = jmp(src, dst, self->op_mode);
+		break;
+        case OP_JMZ:
+		ret_to = jmz(src, dst, self->op_mode);
+		break;
+        case OP_JMN:
+		ret_to = jmz(src, dst, self->op_mode);
+		break;
+        case OP_DJN:
+		ret_to = djn(src, dst, self->op_mode);
+		break;
+        case OP_SEQ:
+		ret_to = seq(src, dst, self->op_mode);
+		break;
+        case OP_SNE:
+		ret_to = sne(src, dst, self->op_mode);
+		break;
+        case OP_SLT:
+		ret_to = slt(src, dst, self->op_mode);
+		break;
+        case OP_SPL:
+		spl_to = spl(src, dst, self->op_mode);
+		break;
+	*/
+        case OP_NOP:
+                break;
+        default:
+                // TODO: print error
+                abort();
+	}
+
+	if (kill_proc) {
 		DB_PRINT(" (process killed)");
 		DB_PRINT("\nold queue [");
 		DB_PRINT_PQUEUE(p);
@@ -123,40 +174,43 @@ void step(Program *p) {
 		if (p->nprocs == 0) {
 			DB_PRINT("], %p terminated\n", p);
 			fprintf(stderr, "program termination not yet implimented, so exiting\n");
-			assert(0);
+			exit(1);
 			// TODO: handle program termination
 			return;
 		}
 
 		// TODO: check if this is handled properly
-		uint *dst = &p->proc_queue[p->cur_proc];
-		uint *src = dst + 1;
+		int *dst = &p->proc_queue[p->cur_proc];
+		int *src = dst + 1;
 		memmove(dst, src, sizeof(uint) * (p->proc_queue + p->nprocs - dst));
 
 		DB_PRINT_PQUEUE(p);
 		DB_PRINT("]\n");
 	} else {
-		uint new_instr_offset = (state.ret_to - core) % CORESIZE;
+		int new_instr_offset = ret_to % CORESIZE; // a wrap
+		if (new_instr_offset < 0)
+			new_instr_offset += CORESIZE;
 		p->proc_queue[p->cur_proc] = new_instr_offset;
 
-		if (state.ret_to != self + 1) {
+		if (ret_to != instr + 1) {
 			DB_PRINT(" (jumped to %d)", closest(new_instr_offset));
 		}
 
 		INCR_PROC(p);
 
-		if (state.spl_to && p->nprocs < MAXPROCS) {
-			uint spl_instr_offset = (state.spl_to - core) % CORESIZE;
-
+		if (spl_to != -1 && p->nprocs < MAXPROCS) {
+			int spl_instr_offset = spl_to % CORESIZE; // a wrap
+			if (spl_instr_offset < 0)
+				spl_instr_offset += CORESIZE;
 			DB_PRINT(" (split to %d)", closest(spl_instr_offset));
 			DB_PRINT("\nold queue [");
 			DB_PRINT_PQUEUE(p);
 			DB_PRINT("], now [");
 
 			p->nprocs++;
-			uint *src = &p->proc_queue[p->cur_proc];
-			uint *dst = src + 1;
-			memmove(dst, src, sizeof(uint) * (p->proc_queue + p->nprocs - dst));
+			int *src = &p->proc_queue[p->cur_proc];
+			int *dst = src + 1;
+			memmove(dst, src, sizeof(uint) * (p->proc_queue + p->nprocs - dst)); // (p->nprocs - p->cur_proc - 1) == (p->proc_queue + p->nprocs - dst)
 			p->proc_queue[p->cur_proc] = spl_instr_offset;
 			INCR_PROC(p);
 

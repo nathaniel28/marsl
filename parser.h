@@ -5,6 +5,6 @@
 
 #include "types.h"
 
-extern int parse(FILE *fp, Cell *buf, uint *len);
+extern int parse(FILE *fp, Cell *buf, int *len);
 
 #endif
