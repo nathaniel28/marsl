@@ -254,6 +254,7 @@ int parse(FILE *fp, Cell *buf, int *len) {
 			}
 
 			buf->operation = l->op;
+			buf->op_mode = l->op_mode;
 			buf->values[0] = l->fields[0].val;
 			buf->addr_modes[0] = l->fields[0].addr_mode;
 			buf->values[1] = l->fields[1].val;

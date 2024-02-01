@@ -246,5 +246,5 @@ void run(Program *start) {
 		}
 		p = p->next;
 	}
-	print_core();
+	//print_core();
 }
