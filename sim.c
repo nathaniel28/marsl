@@ -55,12 +55,19 @@ void init_core() {
 	}
 }
 
-#define WRAP(u, delta) \
-do { \
-	u = (int) (u + delta) % CORESIZE; \
-	if ((int) u < 0) \
-		u += CORESIZE; \
-} while (0);
+uint32_t wrap(uint32_t val, uint32_t max) {
+    if (val >= max)
+	    return val - max;
+    return val;
+}
+
+void flush_fbuf(Valuebuf *fbuf) {
+	if (fbuf->store) {
+		*fbuf->store = (int) (*fbuf->store + fbuf->buffer) % CORESIZE;
+		if ((int) *fbuf->store < 0)
+			*fbuf->store += CORESIZE;
+	}
+}
 
 #define INCR_PROC(p) if (p->cur_proc < p->nprocs - 1) p->cur_proc++; else p->cur_proc = 0
 
@@ -98,7 +105,7 @@ void step(Program *p) {
 	// then USING THAT RESULT (if targeted) resolves the second field.
 
 	_Bool kill_proc = 0;
-	int ret_to = instr + 1;
+	int ret_to = 1; // relative to instr; instr will be added on later
 	int spl_to = -1;
 
 	Cell *src = core + resolve_field(instr, AFIELD, &p->src_fbuf);
@@ -127,28 +134,30 @@ void step(Program *p) {
         case OP_MOD:
 		kill_proc = mod(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
-	/*
         case OP_JMP:
-		ret_to = jmp(src, &p->dst_cbuf.buffer, self->op_mode);
+		ret_to = self->values[AFIELD];
 		break;
         case OP_JMZ:
-		ret_to = jmz(src, &p->dst_cbuf.buffer, self->op_mode);
+		ret_to = jmz(self->values[AFIELD], &p->dst_cbuf.buffer, self->op_mode);
 		break;
         case OP_JMN:
-		ret_to = jmz(src, &p->dst_cbuf.buffer, self->op_mode);
+		ret_to = jmn(self->values[AFIELD], &p->dst_cbuf.buffer, self->op_mode);
 		break;
+	/*
         case OP_DJN:
 		ret_to = djn(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
+	*/
         case OP_SEQ:
-		ret_to = seq(src, &p->dst_cbuf.buffer, self->op_mode);
+		ret_to += seq(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
         case OP_SNE:
-		ret_to = sne(src, &p->dst_cbuf.buffer, self->op_mode);
+		ret_to += sne(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
         case OP_SLT:
-		ret_to = slt(src, &p->dst_cbuf.buffer, self->op_mode);
+		ret_to += slt(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
+	/*
         case OP_SPL:
 		spl_to = spl(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
@@ -183,9 +192,8 @@ void step(Program *p) {
 		DB_PRINT_PQUEUE(p);
 		DB_PRINT("]\n");
 	} else {
-		int new_instr_offset = ret_to % CORESIZE; // a wrap
-		if (new_instr_offset < 0)
-			new_instr_offset += CORESIZE;
+		ret_to += instr;
+		int new_instr_offset = wrap(ret_to, CORESIZE);
 		p->proc_queue[p->cur_proc] = new_instr_offset;
 
 		if (ret_to != instr + 1) {
@@ -195,9 +203,7 @@ void step(Program *p) {
 		INCR_PROC(p);
 
 		if (spl_to != -1 && p->nprocs < MAXPROCS) {
-			int spl_instr_offset = spl_to % CORESIZE; // a wrap
-			if (spl_instr_offset < 0)
-				spl_instr_offset += CORESIZE;
+			int spl_instr_offset = wrap(spl_to, CORESIZE);
 			DB_PRINT(" (split to %d)", closest(spl_instr_offset));
 			DB_PRINT("\nold queue [");
 			DB_PRINT_PQUEUE(p);
@@ -238,12 +244,8 @@ void run(Program *start) {
 		DB_PRINT("]\n");
 		*/
 		*p->dst_cbuf.store = p->dst_cbuf.buffer;
-		if (p->src_fbuf.store) {
-			WRAP(*p->src_fbuf.store, p->src_fbuf.buffer);
-		}
-		if (p->dst_fbuf.store) {
-			WRAP(*p->dst_fbuf.store, p->dst_fbuf.buffer);
-		}
+		flush_fbuf(&p->src_fbuf);
+		flush_fbuf(&p->dst_fbuf);
 		p = p->next;
 	}
 	//print_core();

@@ -3,11 +3,6 @@
 
 #include "types.h"
 
-typedef struct {
-	char name[4];
-	uint8_t default_mode;
-} named_op;
-
 extern uint8_t op_from_name(const char *);
 extern const char *name_from_op(uint8_t op);
 
@@ -23,5 +18,13 @@ extern void mul(Cell *src, Cell *dst, uint8_t mode);
 
 extern _Bool div_(Cell *src, Cell *dst, uint8_t mode);
 extern _Bool mod(Cell *src, Cell *dst, uint8_t mode);
+
+extern uint32_t jmz(uint32_t to, Cell *dst, uint8_t mode);
+extern uint32_t jmn(uint32_t to, Cell *dst, uint8_t mode);
+
+extern _Bool seq(Cell *src, Cell *dst, uint8_t mode);
+extern _Bool sne(Cell *src, Cell *dst, uint8_t mode);
+
+extern _Bool slt(Cell *src, Cell *dst, uint8_t mode);
 
 #endif

@@ -4,26 +4,6 @@
 #include "ops.h"
 #include "types.h"
 
-// lots of stuff is static to produce warnings if I generate useless
-// functions with these hack-y macros
-
-#define GEN_FN(name) \
-	static void name##A () { name(0, 0); } \
-	static void name##B () { name(1, 1); }
-
-#define GEN_FN_REV(name) \
-	static void name##AB() { name(0, 1); } \
-	static void name##BA() { name(1, 0); }
-
-#define GEN_FN_EXTRA(name) \
-	static void name##F () { name(0, 0); name(1, 1); } \
-	static void name##X () { name(0, 1); name(1, 0); }
-
-#define GEN_FULL(name) \
-	GEN_FN(name); \
-	GEN_FN_REV(name); \
-	GEN_FN_EXTRA(name);
-
 void mov(Cell *src, Cell *dst, uint8_t mode) {
 	switch (mode) {
 	case OM_AA:
@@ -70,8 +50,8 @@ void mov(Cell *src, Cell *dst, uint8_t mode) {
 	        case OM_BB: \
 			dst->values[BFIELD] = helper(src->values[BFIELD], dst->values[BFIELD]); \
 			return; \
-	        case OM_I: \
 	        case OM_F: \
+	        case OM_I: \
 			dst->values[AFIELD] = helper(src->values[AFIELD], dst->values[AFIELD]); \
 			dst->values[BFIELD] = helper(src->values[BFIELD], dst->values[BFIELD]); \
 			return; \
@@ -128,8 +108,8 @@ GENERATE_MATH_OP(mul, help_mul);
 				return 1; \
 			dst->values[BFIELD] = helper(src->values[BFIELD], dst->values[BFIELD]); \
 			return 0; \
-	        case OM_I: \
 	        case OM_F: \
+	        case OM_I: \
 			if (dst->values[AFIELD] == 0 || dst->values[BFIELD] == 0) \
 				return 1; \
 			dst->values[AFIELD] = helper(src->values[AFIELD], dst->values[AFIELD]); \
@@ -156,6 +136,85 @@ uint32_t help_mod(uint32_t a, uint32_t b) {
 }
 GENERATE_ZERO_FAIL_MATH_OP(mod, help_mod);
 
+#define GENERATE_CONDITIONAL_JMP(name, cond) \
+	uint32_t name(uint32_t to, Cell *dst, uint8_t mode) { \
+		_Bool res; \
+		switch (mode) { \
+		case OM_AA: \
+	        case OM_BA: \
+			res = (dst->values[AFIELD] cond); \
+			break; \
+	        case OM_BB: \
+	        case OM_AB: \
+			res = (dst->values[BFIELD] cond); \
+			break; \
+	        case OM_F: \
+	        case OM_X: \
+	        case OM_I: \
+			res = (dst->values[AFIELD] cond && dst->values[BFIELD] cond); \
+			break; \
+		default: \
+			abort(); \
+		} \
+		if (res) \
+			return to; \
+		return 1; \
+	}
+
+GENERATE_CONDITIONAL_JMP(jmz, == 0);
+
+GENERATE_CONDITIONAL_JMP(jmn, != 0);
+
+_Bool seq(Cell *src, Cell *dst, uint8_t mode) {
+	switch (mode) {
+	case OM_AA:
+		return src->values[AFIELD] == dst->values[AFIELD];
+        case OM_AB:
+		return src->values[AFIELD] == dst->values[BFIELD];
+        case OM_BA:
+		return src->values[BFIELD] == dst->values[AFIELD];
+        case OM_BB:
+		return src->values[BFIELD] == dst->values[BFIELD];
+        case OM_F:
+		return (src->values[AFIELD] == dst->values[AFIELD]) && (src->values[BFIELD] == dst->values[BFIELD]);
+        case OM_X:
+		return (src->values[AFIELD] == dst->values[BFIELD]) && (src->values[BFIELD] == dst->values[AFIELD]);
+        case OM_I:
+		return (src->operation == dst->operation)
+			&& (src->op_mode == dst->op_mode)
+			&& (src->values[AFIELD] == dst->values[AFIELD])
+			&& (src->values[BFIELD] == dst->values[BFIELD])
+			&& (src->addr_modes[AFIELD] == dst->addr_modes[AFIELD])
+			&& (src->addr_modes[BFIELD] == dst->addr_modes[BFIELD]);
+	default:
+		abort();
+	}
+}
+
+_Bool sne(Cell *src, Cell *dst, uint8_t mode) {
+	return !seq(src, dst, mode);
+}
+
+_Bool slt(Cell *src, Cell *dst, uint8_t mode) {
+	switch (mode) {
+	case OM_AA:
+		return src->values[AFIELD] < dst->values[AFIELD];
+        case OM_AB:
+		return src->values[AFIELD] < dst->values[BFIELD];
+        case OM_BA:
+		return src->values[BFIELD] < dst->values[AFIELD];
+        case OM_BB:
+		return src->values[BFIELD] < dst->values[BFIELD];
+        case OM_F:
+        case OM_I:
+		return (src->values[AFIELD] < dst->values[AFIELD]) && (src->values[BFIELD] < dst->values[BFIELD]);
+        case OM_X:
+		return (src->values[AFIELD] < dst->values[BFIELD]) && (src->values[BFIELD] < dst->values[AFIELD]);
+	default:
+		abort();
+	}
+}
+
 /*
 void (Cell *src, Cell *dst, uint8_t mode) {
 	switch (mode) {
@@ -170,57 +229,10 @@ void (Cell *src, Cell *dst, uint8_t mode) {
 }
 */
 
-/*
-static void jmp() { state.ret_to = state.src; }
-
-#define GEN_JUMP(name, condition) \
-	static void name##A() { if (AFIELD(state.dst).val condition) jmp(); } \
-	static void name##B() { if (BFIELD(state.dst).val condition) jmp(); } \
-	static void name##F() { if (AFIELD(state.dst).val condition && BFIELD(state.dst).val condition) jmp(); }
-
-GEN_JUMP(jmz, == 0);
-
-GEN_JUMP(jmn, != 0);
-
-#define DECR(u) if (u == 0) u = CORESIZE - 1; else u--;
-
-static void djnA() { DECR(AFIELD(state.dst).val); jmnA(); }
-static void djnB() { DECR(BFIELD(state.dst).val); jmnB(); }
-static void djnF() {
-	DECR(AFIELD(state.dst).val);
-	DECR(BFIELD(state.dst).val);
-	if (AFIELD(state.dst).val != 0 || BFIELD(state.dst).val != 0) jmp();
-}
-
-// TODO: please
-#define GEN_SKIP(name, compare) \
-	static void name(byte src_field, byte dst_field) { state.ret_to += ((state.src->fields + src_field)->val compare (state.dst->fields + dst_field)->val); } \
-	GEN_FN(name); \
-	static void name##F() { state.ret_to += (AFIELD(state.src).val compare AFIELD(state.dst).val && BFIELD(state.src).val compare BFIELD(state.dst).val); } \
-	static void name##X() { state.ret_to += (AFIELD(state.src).val compare BFIELD(state.dst).val && BFIELD(state.src).val compare AFIELD(state.dst).val); }
-
-#define GEN_SKIP_FULL(name, compare) \
-	GEN_FN_REV(name); \
-	static void name##I() { \
-		state.ret_to += ( \
-			state.src->op compare state.dst->op && \
-			AFIELD(state.src).addr compare AFIELD(state.dst).addr && \
-			BFIELD(state.src).addr compare BFIELD(state.dst).addr && \
-			AFIELD(state.src).val compare AFIELD(state.dst).val && \
-			BFIELD(state.src).val compare BFIELD(state.dst).val \
-		); \
-	}
-
-GEN_SKIP(seq, ==);
-GEN_SKIP_FULL(seq, ==);
-
-GEN_SKIP(sne, !=);
-GEN_SKIP_FULL(sne, !=);
-
-GEN_SKIP(slt, <);
-
-static void spl() { state.spl_to = state.src; }
-*/
+typedef struct {
+        char name[4];
+        uint8_t default_mode;
+} named_op;
 
 named_op op_registry[OP_NB] = {
 	[OP_DAT] = { "dat", OM_F  },
