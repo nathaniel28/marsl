@@ -16,6 +16,7 @@ parser:
 	$(CC) $(CFLAGS) -c parser.tab.c
 
 test: $(OBJS) testing.o
+	make corewars
 	$(CC) $(CFLAGS) $(OBJS) testing.o $(LIBS) -o test
 
 SRCS=address.c main.c ops.c sim.c testing.c types.c parser.tab.c
