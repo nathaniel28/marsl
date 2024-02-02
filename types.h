@@ -61,10 +61,10 @@
 #define SUBMOD(a, b) (a - b >= CORESIZE ? a - b + CORESIZE : a - b)
 
 typedef struct {
-        uint32_t values[2];
-        uint8_t addr_modes[2]; // see AM_* macros
-        uint8_t operation; // see OP_* macros
-        uint8_t op_mode; // see OM_* macros
+	uint32_t values[2];
+	uint8_t addr_modes[2]; // see AM_* macros
+	uint8_t operation; // see OP_* macros
+	uint8_t op_mode; // see OM_* macros
 } Cell;
 
 #define AFIELD 0

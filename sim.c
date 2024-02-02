@@ -108,65 +108,62 @@ void step(Program *p) {
 	int ret_to = 1; // relative to instr; instr will be added on later
 	int spl_to = -1;
 
-	Cell *src = core + resolve_field(instr, AFIELD, &p->src_fbuf);
+	int src_offset = resolve_field(instr, AFIELD, &p->src_fbuf);
+	Cell *src = core + src_offset;
 	p->dst_cbuf.store = core + resolve_field(instr, BFIELD, &p->dst_fbuf);
 	p->dst_cbuf.buffer = *p->dst_cbuf.store;
 
 	switch (self->operation) {
 	case OP_DAT:
 		kill_proc = 1;
-                break;
-        case OP_MOV:
+		break;
+	case OP_MOV:
 		mov(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
-        case OP_ADD:
+	case OP_ADD:
 		add(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
-        case OP_SUB:
+	case OP_SUB:
 		sub(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
-        case OP_MUL:
+	case OP_MUL:
 		mul(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
-        case OP_DIV:
+	case OP_DIV:
 		kill_proc = div_(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
-        case OP_MOD:
+	case OP_MOD:
 		kill_proc = mod(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
-        case OP_JMP:
-		ret_to = self->values[AFIELD];
+	case OP_JMP:
+		ret_to = src_offset - instr; // src_offset is an absolute position in the core; we need one relative to instr
 		break;
-        case OP_JMZ:
-		ret_to = jmz(self->values[AFIELD], &p->dst_cbuf.buffer, self->op_mode);
+	case OP_JMZ:
+		ret_to = jmz(src_offset - instr, &p->dst_cbuf.buffer, self->op_mode);
 		break;
-        case OP_JMN:
-		ret_to = jmn(self->values[AFIELD], &p->dst_cbuf.buffer, self->op_mode);
+	case OP_JMN:
+		ret_to = jmn(src_offset - instr, &p->dst_cbuf.buffer, self->op_mode);
 		break;
-	/*
-        case OP_DJN:
-		ret_to = djn(src, &p->dst_cbuf.buffer, self->op_mode);
+	case OP_DJN:
+		ret_to = djn(src_offset - instr, &p->dst_cbuf.buffer, self->op_mode);
 		break;
-	*/
-        case OP_SEQ:
+	case OP_SEQ:
 		ret_to += seq(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
-        case OP_SNE:
+	case OP_SNE:
 		ret_to += sne(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
-        case OP_SLT:
+	case OP_SLT:
 		ret_to += slt(src, &p->dst_cbuf.buffer, self->op_mode);
 		break;
-	/*
-        case OP_SPL:
-		spl_to = spl(src, &p->dst_cbuf.buffer, self->op_mode);
+	case OP_SPL:
+		spl_to = src_offset - instr;
 		break;
-	*/
-        case OP_NOP:
-                break;
-        default:
-                // TODO: print error
-                abort();
+	case OP_NOP:
+		break;
+	default:
+		// TODO: print error
+		abort();
 	}
 
 	if (kill_proc) {
@@ -203,6 +200,7 @@ void step(Program *p) {
 		INCR_PROC(p);
 
 		if (spl_to != -1 && p->nprocs < MAXPROCS) {
+			spl_to += instr;
 			int spl_instr_offset = wrap(spl_to, CORESIZE);
 			DB_PRINT(" (split to %d)", closest(spl_instr_offset));
 			DB_PRINT("\nold queue [");

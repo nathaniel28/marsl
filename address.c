@@ -5,65 +5,52 @@
 #include "types.h"
 
 int offset(int cell, int delta) {
-        cell = (cell + delta) % CORESIZE;
-        if (cell < 0)
-                return cell + CORESIZE;
-        return cell;
+	cell = (cell + delta) % CORESIZE;
+	if (cell < 0)
+		return cell + CORESIZE;
+	return cell;
 }
 
 int indirect(int cell, int field) {
-        return offset(cell, core[cell].values[field]);
+	return offset(cell, core[cell].values[field]);
 }
 
 int resolve_field(int cell, int field, Valuebuf *vb) {
-        int delta;
-        switch (core[cell].addr_modes[field]) {
-        case AM_IMMEDIATE:
-                return 0;
-        case AM_DIRECT:
-                return indirect(cell, field);
-        case AM_INDIRECT_A:
-                cell = indirect(cell, field);
-                return indirect(cell, AFIELD);
-        case AM_INDIRECT_B:
-                cell = indirect(cell, field);
-                return indirect(cell, BFIELD);
-        case AM_INDIRECT_A_PREDEC:
-                cell = indirect(cell, field);
-                delta = core[cell].values[AFIELD] - 1;
-                if (unlikely(delta < 0))
-                        delta = CORESIZE - 1;
-                vb->store = &core[cell].values[AFIELD];
-                vb->buffer = delta;
-                return offset(cell, delta);
-        case AM_INDIRECT_B_PREDEC:
-                cell = indirect(cell, field);
-                delta = core[cell].values[BFIELD] - 1;
-                if (unlikely(delta < 0))
-                        delta = CORESIZE - 1;
-                vb->store = &core[cell].values[BFIELD];
-                vb->buffer = delta;
-                return offset(cell, delta);
-        case AM_INDIRECT_A_POSTINC:
-                cell = indirect(cell, field);
-                delta = core[cell].values[AFIELD] + 1;
-                if (unlikely(delta >= CORESIZE))
-                        delta = 0;
-                vb->store = &core[cell].values[AFIELD];
-                vb->buffer = delta;
-                return indirect(cell, AFIELD);
-        case AM_INDIRECT_B_POSTINC:
-                cell = indirect(cell, field);
-                delta = core[cell].values[BFIELD] + 1;
-                if (unlikely(delta >= CORESIZE))
-                        delta = 0;
-                vb->store = &core[cell].values[BFIELD];
-                vb->buffer = delta;
-                return indirect(cell, BFIELD);
-        default:
-                // TODO: say an error
-                abort();
-        }
+	switch (core[cell].addr_modes[field]) {
+	case AM_IMMEDIATE:
+		return cell;
+	case AM_DIRECT:
+		return indirect(cell, field);
+	case AM_INDIRECT_A:
+		cell = indirect(cell, field);
+		return indirect(cell, AFIELD);
+	case AM_INDIRECT_B:
+		cell = indirect(cell, field);
+		return indirect(cell, BFIELD);
+	case AM_INDIRECT_A_PREDEC:
+		cell = indirect(cell, field);
+		vb->store = &core[cell].values[AFIELD];
+		vb->buffer = -1;
+		return offset(cell, -1);
+	case AM_INDIRECT_B_PREDEC:
+		cell = indirect(cell, field);
+		vb->store = &core[cell].values[BFIELD];
+		vb->buffer = -1;
+		return offset(cell, -1);
+	case AM_INDIRECT_A_POSTINC:
+		cell = indirect(cell, field);
+		vb->store = &core[cell].values[AFIELD];
+		vb->buffer = 1;
+		return indirect(cell, AFIELD);
+	case AM_INDIRECT_B_POSTINC:
+		cell = indirect(cell, field);
+		vb->store = &core[cell].values[BFIELD];
+		vb->buffer = 1;
+		return indirect(cell, BFIELD);
+	default:
+		// TODO: say an error
+		abort();
+	}
 }
 
 /*

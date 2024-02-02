@@ -8,30 +8,30 @@ void mov(Cell *src, Cell *dst, uint8_t mode) {
 	switch (mode) {
 	case OM_AA:
 		dst->values[AFIELD] = src->values[AFIELD];
-                return;
-        case OM_AB:
+		return;
+	case OM_AB:
 		dst->values[BFIELD] = src->values[AFIELD];
-                return;
-        case OM_BA:
+		return;
+	case OM_BA:
 		dst->values[AFIELD] = src->values[BFIELD];
-                return;
-        case OM_BB:
+		return;
+	case OM_BB:
 		dst->values[BFIELD] = src->values[BFIELD];
-                return;
-        case OM_F:
+		return;
+	case OM_F:
 		dst->values[AFIELD] = src->values[AFIELD];
 		dst->values[BFIELD] = src->values[BFIELD];
-                return;
-        case OM_X:
+		return;
+	case OM_X:
 		dst->values[AFIELD] = src->values[BFIELD];
 		dst->values[BFIELD] = src->values[AFIELD];
-                return;
-        case OM_I:
+		return;
+	case OM_I:
 		*dst = *src;
-                return;
-        default:
-                // TODO: print error
-                abort();
+		return;
+	default:
+		// TODO: print error
+		abort();
 	}
 }
 
@@ -41,21 +41,21 @@ void mov(Cell *src, Cell *dst, uint8_t mode) {
 		case OM_AA: \
 			dst->values[AFIELD] = helper(src->values[AFIELD], dst->values[AFIELD]); \
 			return; \
-	        case OM_AB: \
+		case OM_AB: \
 			dst->values[BFIELD] = helper(src->values[AFIELD], dst->values[BFIELD]); \
 			return; \
-	        case OM_BA: \
+		case OM_BA: \
 			dst->values[AFIELD] = helper(src->values[BFIELD], dst->values[AFIELD]); \
 			return; \
-	        case OM_BB: \
+		case OM_BB: \
 			dst->values[BFIELD] = helper(src->values[BFIELD], dst->values[BFIELD]); \
 			return; \
-	        case OM_F: \
-	        case OM_I: \
+		case OM_F: \
+		case OM_I: \
 			dst->values[AFIELD] = helper(src->values[AFIELD], dst->values[AFIELD]); \
 			dst->values[BFIELD] = helper(src->values[BFIELD], dst->values[BFIELD]); \
 			return; \
-	        case OM_X: \
+		case OM_X: \
 			dst->values[AFIELD] = helper(src->values[BFIELD], dst->values[AFIELD]); \
 			dst->values[BFIELD] = helper(src->values[AFIELD], dst->values[BFIELD]); \
 			return; \
@@ -93,29 +93,29 @@ GENERATE_MATH_OP(mul, help_mul);
 				return 1; \
 			dst->values[AFIELD] = helper(src->values[AFIELD], dst->values[AFIELD]); \
 			return 0; \
-	        case OM_AB: \
+		case OM_AB: \
 			if (dst->values[BFIELD] == 0) \
 				return 1; \
 			dst->values[BFIELD] = helper(src->values[AFIELD], dst->values[BFIELD]); \
 			return 0; \
-	        case OM_BA: \
+		case OM_BA: \
 			if (dst->values[AFIELD] == 0) \
 				return 1; \
 			dst->values[AFIELD] = helper(src->values[BFIELD], dst->values[AFIELD]); \
 			return 0; \
-	        case OM_BB: \
+		case OM_BB: \
 			if (dst->values[BFIELD] == 0) \
 				return 1; \
 			dst->values[BFIELD] = helper(src->values[BFIELD], dst->values[BFIELD]); \
 			return 0; \
-	        case OM_F: \
-	        case OM_I: \
+		case OM_F: \
+		case OM_I: \
 			if (dst->values[AFIELD] == 0 || dst->values[BFIELD] == 0) \
 				return 1; \
 			dst->values[AFIELD] = helper(src->values[AFIELD], dst->values[AFIELD]); \
 			dst->values[BFIELD] = helper(src->values[BFIELD], dst->values[BFIELD]); \
 			return 0; \
-	        case OM_X: \
+		case OM_X: \
 			if (dst->values[AFIELD] == 0 || dst->values[BFIELD] == 0) \
 				return 1; \
 			dst->values[AFIELD] = helper(src->values[BFIELD], dst->values[AFIELD]); \
@@ -137,20 +137,20 @@ uint32_t help_mod(uint32_t a, uint32_t b) {
 GENERATE_ZERO_FAIL_MATH_OP(mod, help_mod);
 
 #define GENERATE_CONDITIONAL_JMP(name, cond) \
-	uint32_t name(uint32_t to, Cell *dst, uint8_t mode) { \
+	int name(int to, Cell *dst, uint8_t mode) { \
 		_Bool res; \
 		switch (mode) { \
 		case OM_AA: \
-	        case OM_BA: \
+		case OM_BA: \
 			res = (dst->values[AFIELD] cond); \
 			break; \
-	        case OM_BB: \
-	        case OM_AB: \
+		case OM_BB: \
+		case OM_AB: \
 			res = (dst->values[BFIELD] cond); \
 			break; \
-	        case OM_F: \
-	        case OM_X: \
-	        case OM_I: \
+		case OM_F: \
+		case OM_X: \
+		case OM_I: \
 			res = (dst->values[AFIELD] cond && dst->values[BFIELD] cond); \
 			break; \
 		default: \
@@ -165,21 +165,49 @@ GENERATE_CONDITIONAL_JMP(jmz, == 0);
 
 GENERATE_CONDITIONAL_JMP(jmn, != 0);
 
+int djn(int to, Cell *dst, uint8_t mode) {
+	_Bool res;
+	switch (mode) {
+	case OM_AA:
+	case OM_BA:
+		dst->values[AFIELD] = help_sub(dst->values[AFIELD], 1);
+		res = (dst->values[AFIELD] != 0);
+		break;
+	case OM_BB:
+	case OM_AB:
+		dst->values[BFIELD] = help_sub(dst->values[BFIELD], 1);
+		res = (dst->values[BFIELD] != 0);
+		break;
+	case OM_F:
+	case OM_X:
+	case OM_I:
+		dst->values[AFIELD] = help_sub(dst->values[AFIELD], 1);
+		dst->values[BFIELD] = help_sub(dst->values[BFIELD], 1);
+		res = (dst->values[AFIELD] != 0) || (dst->values[BFIELD] != 0);
+		break;
+	default:
+		abort();
+	}
+	if (res)
+		return to;
+	return 1;
+}
+
 _Bool seq(Cell *src, Cell *dst, uint8_t mode) {
 	switch (mode) {
 	case OM_AA:
 		return src->values[AFIELD] == dst->values[AFIELD];
-        case OM_AB:
+	case OM_AB:
 		return src->values[AFIELD] == dst->values[BFIELD];
-        case OM_BA:
+	case OM_BA:
 		return src->values[BFIELD] == dst->values[AFIELD];
-        case OM_BB:
+	case OM_BB:
 		return src->values[BFIELD] == dst->values[BFIELD];
-        case OM_F:
+	case OM_F:
 		return (src->values[AFIELD] == dst->values[AFIELD]) && (src->values[BFIELD] == dst->values[BFIELD]);
-        case OM_X:
+	case OM_X:
 		return (src->values[AFIELD] == dst->values[BFIELD]) && (src->values[BFIELD] == dst->values[AFIELD]);
-        case OM_I:
+	case OM_I:
 		return (src->operation == dst->operation)
 			&& (src->op_mode == dst->op_mode)
 			&& (src->values[AFIELD] == dst->values[AFIELD])
@@ -199,39 +227,25 @@ _Bool slt(Cell *src, Cell *dst, uint8_t mode) {
 	switch (mode) {
 	case OM_AA:
 		return src->values[AFIELD] < dst->values[AFIELD];
-        case OM_AB:
+	case OM_AB:
 		return src->values[AFIELD] < dst->values[BFIELD];
-        case OM_BA:
+	case OM_BA:
 		return src->values[BFIELD] < dst->values[AFIELD];
-        case OM_BB:
+	case OM_BB:
 		return src->values[BFIELD] < dst->values[BFIELD];
-        case OM_F:
-        case OM_I:
+	case OM_F:
+	case OM_I:
 		return (src->values[AFIELD] < dst->values[AFIELD]) && (src->values[BFIELD] < dst->values[BFIELD]);
-        case OM_X:
+	case OM_X:
 		return (src->values[AFIELD] < dst->values[BFIELD]) && (src->values[BFIELD] < dst->values[AFIELD]);
 	default:
 		abort();
 	}
 }
 
-/*
-void (Cell *src, Cell *dst, uint8_t mode) {
-	switch (mode) {
-	case OM_AA:
-        case OM_AB:
-        case OM_BA:
-        case OM_BB:
-        case OM_F:
-        case OM_X:
-        case OM_I:
-	}
-}
-*/
-
 typedef struct {
-        char name[4];
-        uint8_t default_mode;
+	char name[4];
+	uint8_t default_mode;
 } named_op;
 
 named_op op_registry[OP_NB] = {
@@ -285,15 +299,15 @@ uint8_t mode_from_name(const char *name) {
 
 const char *name_from_mode(uint8_t mode) {
 	switch (mode) {
-	case OM_AA: return "a";
+	case OM_AA: return "a ";
 	case OM_AB: return "ab";
 	case OM_BA: return "ba";
-	case OM_BB: return "b";
-	case OM_F: return "f";
-	case OM_X: return "x";
-	case OM_I: return "i";
+	case OM_BB: return "b ";
+	case OM_F: return "f ";
+	case OM_X: return "x ";
+	case OM_I: return "i ";
 	}
-	return "?";
+	return "? ";
 }
 
 // name must be a pointer to at least 3 characters.

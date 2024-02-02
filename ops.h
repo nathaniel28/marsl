@@ -19,8 +19,10 @@ extern void mul(Cell *src, Cell *dst, uint8_t mode);
 extern _Bool div_(Cell *src, Cell *dst, uint8_t mode);
 extern _Bool mod(Cell *src, Cell *dst, uint8_t mode);
 
-extern uint32_t jmz(uint32_t to, Cell *dst, uint8_t mode);
-extern uint32_t jmn(uint32_t to, Cell *dst, uint8_t mode);
+extern int jmz(int to, Cell *dst, uint8_t mode);
+extern int jmn(int to, Cell *dst, uint8_t mode);
+
+extern int djn(int to, Cell *dst, uint8_t mode);
 
 extern _Bool seq(Cell *src, Cell *dst, uint8_t mode);
 extern _Bool sne(Cell *src, Cell *dst, uint8_t mode);

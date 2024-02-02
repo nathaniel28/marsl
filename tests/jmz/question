@@ -11,7 +11,7 @@ jmz.f $2, $4
 jmp $2, $0
 jmp $0, $0
 mov $0, $1
-jmz.ab $0, $0
-jmz.ba $0, $1
-jmz.x $1, $0
-jmz.i $1, $1
+jmz.b $0, $0
+jmz.a $0, $1
+jmz.f $1, $0
+jmz.f $1, $1
