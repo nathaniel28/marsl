@@ -1,0 +1,6 @@
+mul.a #3, $0
+mul.b $0, #4
+mul.ab #-2, #6
+mul.ba #-8, #-2
+mul.f #5, #-2
+mul.x #3, #5
