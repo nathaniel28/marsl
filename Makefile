@@ -1,30 +1,23 @@
 
-CFLAGS=-g3 -Wall -Wextra -Wno-unused-parameter #-O3
-LIBS=
+SOURCES = address.c types.c ops.c sim.c parser.tab.c
+OBJS = $(addsuffix .o, $(basename $(notdir $(SOURCES))))
+CFLAGS = -g -Wall -Wextra -pedantic -std=gnu23
+LIBS =
+CC = cc
 
 default: corewars
 
-include Makefile.d
+parser.tab.c: parser.y
+	bison -t --warnings=all -Wcounterexamples parser.y
 
-OBJS=address.o ops.o sim.o types.o parser.tab.o
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 corewars: $(OBJS) main.o
-	$(CC) $(CFLAGS) $(OBJS) main.o $(LIBS) -o corewars
-
-parser:
-	bison -t --warnings=all -Wcounterexamples parser.y
-	$(CC) $(CFLAGS) -c parser.tab.c
+	$(CC) $(CFLAGS) $(LIBS) $(OBJS) main.o -o $@
 
 test: $(OBJS) testing.o
-	make corewars
-	$(CC) $(CFLAGS) $(OBJS) testing.o $(LIBS) -o test
-
-SRCS=address.c main.c ops.c sim.c testing.c types.c parser.tab.c
-depend Makefile.d:
-	$(CC) -MM $(SRCS) |grep : >Makefile.d
+	$(CC) $(CFLAGS) $(LIBS) $(OBJS) testing.o -o $@
 
 clean:
-	rm *.o
-	make depend
-	make parser
-	make default
+	rm -f *.o parser.tab.c corewars test

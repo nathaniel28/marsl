@@ -136,14 +136,10 @@ int yylex() {
 	if (isdigit(c) || c == '-') {
 		ungetc(c, pstate.file);
 		long n;
-		if (fscanf(pstate.file, "%lu", &n) != 1) {
+		if (fscanf(pstate.file, "%ld", &n) != 1) {
 			fprintf(stderr, "fscanf failed to match long integer\n");
 			abort();
 		}
-		// in C, -1 % 5 (both signed) == -1, NOT 4, as % is the
-		// remainder operator, not a modulo operator. Thus, a slight
-		// workaround is neccesary to make sure the result is the
-		// correct positive version.
 		n = n % CORESIZE;
 		if (n < 0) {
 			n += CORESIZE;

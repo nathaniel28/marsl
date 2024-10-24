@@ -3,9 +3,6 @@
 
 #include <stdint.h>
 
-#define likely(x) __builtin_expect(!!(x), 1)
-#define unlikely(x) __builtin_expect(!!(x), 0)
-
 #define CORESIZE 80
 #define MAXPROCS 16
 #define MAXPROGRAMLEN 30
@@ -21,6 +18,7 @@
 #define AM_INDIRECT_B_PREDEC 5
 #define AM_INDIRECT_A_POSTINC 6
 #define AM_INDIRECT_B_POSTINC 7
+#define AM_NB 8
 #define AM_DEFAULT AM_DIRECT
 #define AM_INVALID 255
 
@@ -53,6 +51,7 @@
 #define OM_F 4
 #define OM_X 5
 #define OM_I 6
+#define OM_NB 7
 #define OM_DEFAULT OM_F
 #define OM_INVALID 255
 

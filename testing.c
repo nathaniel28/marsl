@@ -10,14 +10,15 @@
 #include "types.h"
 #include "sim.h"
 
+// TODO: get rid of this-- what is this nonsense
 // cur_test must only be set by run_tests and used by sig_handler. Keep note
 // that when not in this case, it points to garbage. I want a signal handler
 // because the simulation may assert() things, which in turn can raise SIGABRT.
 // I'm not sure if an async signal handler is allowed to read from a static
 // global variable, but hey, "it works on my machine!"
-static char *cur_test;
-
+static volatile char *cur_test;
 static void sig_handler(int sig) {
+	(void) sig;
 	static const char msg0[] = "abort during test ";
 	static const char msg1[] = "\n...things failed way worse than usual\n";
 	if (cur_test) {
@@ -25,7 +26,7 @@ static void sig_handler(int sig) {
 		// printf and friends are not.
 		write(STDERR_FILENO, msg0, sizeof(msg0) - 1);
 		// using cur_test in this signal hander is ok... hopefully
-		char *c = cur_test;
+		char *c = (char *) cur_test;
 		while (*c) {
 			write(STDERR_FILENO, c, 1);
 			c++;

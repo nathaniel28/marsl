@@ -29,4 +29,6 @@ extern _Bool sne(Cell *src, Cell *dst, uint8_t mode);
 
 extern _Bool slt(Cell *src, Cell *dst, uint8_t mode);
 
+extern const char *invalid_op_str;
+
 #endif

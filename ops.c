@@ -39,25 +39,25 @@ void mov(Cell *src, Cell *dst, uint8_t mode) {
 	void name(Cell *src, Cell *dst, uint8_t mode) { \
 		switch (mode) { \
 		case OM_AA: \
-			dst->values[AFIELD] = helper(src->values[AFIELD], dst->values[AFIELD]); \
+			dst->values[AFIELD] = helper(dst->values[AFIELD], src->values[AFIELD]); \
 			return; \
 		case OM_AB: \
-			dst->values[BFIELD] = helper(src->values[AFIELD], dst->values[BFIELD]); \
+			dst->values[BFIELD] = helper(dst->values[BFIELD], src->values[AFIELD]); \
 			return; \
 		case OM_BA: \
-			dst->values[AFIELD] = helper(src->values[BFIELD], dst->values[AFIELD]); \
+			dst->values[AFIELD] = helper(dst->values[AFIELD], src->values[BFIELD]); \
 			return; \
 		case OM_BB: \
-			dst->values[BFIELD] = helper(src->values[BFIELD], dst->values[BFIELD]); \
+			dst->values[BFIELD] = helper(dst->values[BFIELD], src->values[BFIELD]); \
 			return; \
 		case OM_F: \
 		case OM_I: \
-			dst->values[AFIELD] = helper(src->values[AFIELD], dst->values[AFIELD]); \
-			dst->values[BFIELD] = helper(src->values[BFIELD], dst->values[BFIELD]); \
+			dst->values[AFIELD] = helper(dst->values[AFIELD], src->values[AFIELD]); \
+			dst->values[BFIELD] = helper(dst->values[BFIELD], src->values[BFIELD]); \
 			return; \
 		case OM_X: \
-			dst->values[AFIELD] = helper(src->values[BFIELD], dst->values[AFIELD]); \
-			dst->values[BFIELD] = helper(src->values[AFIELD], dst->values[BFIELD]); \
+			dst->values[AFIELD] = helper(dst->values[AFIELD], src->values[BFIELD]); \
+			dst->values[BFIELD] = helper(dst->values[BFIELD], src->values[AFIELD]); \
 			return; \
 		default: \
 			abort(); \
@@ -70,56 +70,56 @@ uint32_t help_add(uint32_t a, uint32_t b) {
 		return res - CORESIZE;
 	return res;
 }
-GENERATE_MATH_OP(add, help_add);
+GENERATE_MATH_OP(add, help_add)
 
 uint32_t help_sub(uint32_t a, uint32_t b) {
-	int32_t res = a - b; // signed, converted to uint32_t during return
+	int32_t res = a - b; // signed res, converted to uint32_t during return
 	if (res < 0)
 		return res + CORESIZE;
 	return res;
 }
-GENERATE_MATH_OP(sub, help_sub);
+GENERATE_MATH_OP(sub, help_sub)
 
 uint32_t help_mul(uint32_t a, uint32_t b) {
 	return (a * b) % CORESIZE;
 }
-GENERATE_MATH_OP(mul, help_mul);
+GENERATE_MATH_OP(mul, help_mul)
 
 #define GENERATE_ZERO_FAIL_MATH_OP(name, helper) \
 	_Bool name(Cell *src, Cell *dst, uint8_t mode) { \
 		switch (mode) { \
 		case OM_AA: \
-			if (dst->values[AFIELD] == 0) \
+			if (src->values[AFIELD] == 0) \
 				return 1; \
-			dst->values[AFIELD] = helper(src->values[AFIELD], dst->values[AFIELD]); \
+			dst->values[AFIELD] = helper(dst->values[AFIELD], src->values[AFIELD]); \
 			return 0; \
 		case OM_AB: \
-			if (dst->values[BFIELD] == 0) \
+			if (src->values[AFIELD] == 0) \
 				return 1; \
-			dst->values[BFIELD] = helper(src->values[AFIELD], dst->values[BFIELD]); \
+			dst->values[BFIELD] = helper(dst->values[BFIELD], src->values[AFIELD]); \
 			return 0; \
 		case OM_BA: \
-			if (dst->values[AFIELD] == 0) \
+			if (src->values[BFIELD] == 0) \
 				return 1; \
-			dst->values[AFIELD] = helper(src->values[BFIELD], dst->values[AFIELD]); \
+			dst->values[AFIELD] = helper(dst->values[AFIELD], src->values[BFIELD]); \
 			return 0; \
 		case OM_BB: \
-			if (dst->values[BFIELD] == 0) \
+			if (src->values[BFIELD] == 0) \
 				return 1; \
-			dst->values[BFIELD] = helper(src->values[BFIELD], dst->values[BFIELD]); \
+			dst->values[BFIELD] = helper(dst->values[BFIELD], src->values[BFIELD]); \
 			return 0; \
 		case OM_F: \
 		case OM_I: \
-			if (dst->values[AFIELD] == 0 || dst->values[BFIELD] == 0) \
+			if (src->values[AFIELD] == 0 || src->values[BFIELD] == 0) \
 				return 1; \
-			dst->values[AFIELD] = helper(src->values[AFIELD], dst->values[AFIELD]); \
-			dst->values[BFIELD] = helper(src->values[BFIELD], dst->values[BFIELD]); \
+			dst->values[AFIELD] = helper(dst->values[AFIELD], src->values[AFIELD]); \
+			dst->values[BFIELD] = helper(dst->values[BFIELD], src->values[BFIELD]); \
 			return 0; \
 		case OM_X: \
-			if (dst->values[AFIELD] == 0 || dst->values[BFIELD] == 0) \
+			if (src->values[AFIELD] == 0 || src->values[BFIELD] == 0) \
 				return 1; \
-			dst->values[AFIELD] = helper(src->values[BFIELD], dst->values[AFIELD]); \
-			dst->values[BFIELD] = helper(src->values[AFIELD], dst->values[BFIELD]); \
+			dst->values[AFIELD] = helper(dst->values[AFIELD], src->values[BFIELD]); \
+			dst->values[BFIELD] = helper(dst->values[BFIELD], src->values[AFIELD]); \
 			return 0; \
 		default: \
 			abort(); \
@@ -127,14 +127,17 @@ GENERATE_MATH_OP(mul, help_mul);
 	}
 
 uint32_t help_div(uint32_t a, uint32_t b) {
-	return (a / b) % CORESIZE;
+	// no need for mod CORESIZE because given a < CORESIZE and b < CORESIZE,
+	// a / b >= CORESIZE is not possible
+	return a / b;
 }
-GENERATE_ZERO_FAIL_MATH_OP(div_, help_div);
+GENERATE_ZERO_FAIL_MATH_OP(div_, help_div)
 
 uint32_t help_mod(uint32_t a, uint32_t b) {
-	return (a % b) % CORESIZE;
+	// again, no need for mod CORESIZE
+	return a % b;
 }
-GENERATE_ZERO_FAIL_MATH_OP(mod, help_mod);
+GENERATE_ZERO_FAIL_MATH_OP(mod, help_mod)
 
 #define GENERATE_CONDITIONAL_JMP(name, cond) \
 	int name(int to, Cell *dst, uint8_t mode) { \
@@ -161,9 +164,9 @@ GENERATE_ZERO_FAIL_MATH_OP(mod, help_mod);
 		return 1; \
 	}
 
-GENERATE_CONDITIONAL_JMP(jmz, == 0);
+GENERATE_CONDITIONAL_JMP(jmz, == 0)
 
-GENERATE_CONDITIONAL_JMP(jmn, != 0);
+GENERATE_CONDITIONAL_JMP(jmn, != 0)
 
 int djn(int to, Cell *dst, uint8_t mode) {
 	_Bool res;
@@ -297,6 +300,8 @@ uint8_t mode_from_name(const char *name) {
 	return OM_INVALID;
 }
 
+const char *invalid_op_str = "invalid operation";
+
 const char *name_from_mode(uint8_t mode) {
 	switch (mode) {
 	case OM_AA: return "a ";
@@ -307,7 +312,7 @@ const char *name_from_mode(uint8_t mode) {
 	case OM_X: return "x ";
 	case OM_I: return "i ";
 	}
-	return "? ";
+	return invalid_op_str;
 }
 
 // name must be a pointer to at least 3 characters.
@@ -322,13 +327,13 @@ uint8_t op_from_name(const char *name) {
 }
 
 const char *name_from_op(uint8_t op) {
-	if (op >= OP_NB) // actually, an assertion is probably better
-		return "invalid operation";
+	if (op >= OP_NB)
+		return invalid_op_str; // this way, we keep people printing this happy (we can't just return NULL), and those who want to know the error occured can check
 	return op_registry[op].name;
 }
 
 uint8_t default_op_mode(uint8_t op) {
-	if (op >= OP_NB) // actually, an assertion is probably better
+	if (op >= OP_NB)
 		return -1;
 	return op_registry[op].default_mode;
 }

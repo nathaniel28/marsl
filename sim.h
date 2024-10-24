@@ -9,10 +9,12 @@ extern void print_core();
 
 extern void init_core();
 
-// temporarily extern, eventually should be replaced with something like
-// void run_match(Program *competitors, size_t cnt)
-// extern void step(Program *);
-
+// Step the simulation forward
+// Programs are in a linked list
 extern void run(Program *);
+
+// Load each program into the core obeying MINSEPERATION
+// Programs are in a linked list
+// extern void load(Program *);
 
 #endif
