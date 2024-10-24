@@ -3,7 +3,7 @@ div.b $-1, #3
 div.ab #20, #0
 div.ba #3, #4
 div.f $0, #3
-div.x #39, #0
+div.x #13, #0
 spl $3, $0
 div.f $1, #0
 dat <0, $4
