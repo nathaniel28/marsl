@@ -3,7 +3,6 @@ SOURCES = address.c types.c ops.c sim.c parser.tab.c
 OBJS = $(addsuffix .o, $(basename $(notdir $(SOURCES))))
 CFLAGS = -g -Wall -Wextra -pedantic -std=gnu23
 LIBS =
-CC = cc
 
 default: corewars
 
@@ -13,7 +12,7 @@ parser.tab.c: parser.y
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-corewars: $(OBJS) main.o
+corewars: parser.tab.c $(OBJS) main.o
 	$(CC) $(CFLAGS) $(LIBS) $(OBJS) main.o -o $@
 
 test: $(OBJS) testing.o

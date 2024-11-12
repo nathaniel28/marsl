@@ -5,10 +5,8 @@ marsl is a memory array redcode simulator, aiming to be like [this popular one](
 
 ## compilation
 
-`make depend` updates dependencies.
-
-`make parser` uses [bison](https://www.gnu.org/software/bison) to generate a parser given parser.y. The parser needs to be generated in order to use any other make command, except `make clean`, which invokes `make parser` automatically.
+You must have a C compiler and [bison](https://www.gnu.org/software/bison) to build this project.
 
 `make test` creates an executable named `test`, which runs all tests in the directory ./tests/ given no arguments, or specific tests given by name.
 
-`make corewars` creates the main executable for this whole project. However, this executable does nothing currently, as I'm focusing on testing. See `make test`.
+`make` creates the main executable for this whole project. However, this executable does nothing currently, as I'm focusing on testing. See `make test`.
